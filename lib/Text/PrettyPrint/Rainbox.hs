@@ -12,6 +12,7 @@ import qualified Data.Text as X
 data Box = Box
   { rows :: Int
   , cols :: Int
+  , background :: Background
   , content :: Content
   } deriving Show
 
@@ -66,13 +67,13 @@ data Content
   | Chunks [Chunk]
   -- ^ A raw string.
 
-  | Row Background [Box]
+  | Row [Box]
   -- ^ A row of sub-boxes.
 
-  | Col Background [Box]
+  | Col [Box]
   -- ^ A column of sub-boxes.
 
-  | SubBox Background Alignment Alignment Box
+  | SubBox Alignment Alignment Box
   -- ^ A sub-box with a specified alignment.  Alignment is
   -- horizontal alignment first, vertical alignment second.
   deriving Show
@@ -80,20 +81,20 @@ data Content
 
 -- | The null box, which has no content and no size.  It is quite
 --   useless.
-nullBox :: Box
-nullBox = emptyBox 0 0
+nullBox :: Background -> Box
+nullBox bk = emptyBox bk 0 0
 
 -- | @emptyBox r c@ is an empty box with @r@ rows and @c@ columns.
 --   Useful for effecting more fine-grained positioning of other
 --   boxes, by inserting empty boxes of the desired size in between
 --   them.
-emptyBox :: Int -> Int -> Box
-emptyBox r c = Box r c Blank
+emptyBox :: Background -> Int -> Int -> Box
+emptyBox b r c = Box r c b Blank
 
 -- | Contains chunks; the box is 1 tall and its length is the sum of
 -- the lengths of the chunks.
-chunks :: [Chunk] -> Box
-chunks cs = Box 1 (sum . map X.length . map text $ cs) (Chunks cs)
+chunks :: Background -> [Chunk] -> Box
+chunks b cs = Box 1 (sum . map X.length . map text $ cs) b (Chunks cs)
 
 --
 -- # Alignment
@@ -103,19 +104,19 @@ chunks cs = Box 1 (sum . map X.length . map text $ cs) (Chunks cs)
 --   contents and height of @bx@, horizontally aligned according to
 --   @algn@.
 alignHoriz :: Background -> Alignment -> Int -> Box -> Box
-alignHoriz bk a c b = Box (rows b) c $ SubBox bk a AlignFirst b
+alignHoriz bk a c b = Box (rows b) c bk $ SubBox a AlignFirst b
 
 -- | @alignVert algn n bx@ creates a box of height @n@, with the
 --   contents and width of @bx@, vertically aligned according to
 --   @algn@.
 alignVert :: Background -> Alignment -> Int -> Box -> Box
-alignVert bk a r b = Box r (cols b) $ SubBox bk AlignFirst a b
+alignVert bk a r b = Box r (cols b) bk $ SubBox AlignFirst a b
 
 -- | @align ah av r c bx@ creates an @r@ x @c@ box with the contents
 --   of @bx@, aligned horizontally according to @ah@ and vertically
 --   according to @av@.
 align :: Background -> Alignment -> Alignment -> Int -> Int -> Box -> Box
-align bk ah av r c = Box r c . SubBox bk ah av
+align bk ah av r c = Box r c bk . SubBox ah av
 
 -- | Move a box \"up\" by putting it in a larger box with extra rows,
 --   aligned to the top.  See the disclaimer for 'moveLeft'.
@@ -146,25 +147,25 @@ moveRight bk n b = alignHoriz bk right (cols b + n) b
 
 -- | Glue a list of boxes together horizontally, with the given alignment.
 hcat :: Background -> Alignment -> [Box] -> Box
-hcat b a bs = Box h w (Row b $ map (alignVert b a h) bs)
+hcat b a bs = Box h w b (Row $ map (alignVert b a h) bs)
   where h = maximum . (0:) . map rows $ bs
         w = sum . map cols $ bs
 
 -- | @hsep sep a bs@ lays out @bs@ horizontally with alignment @a@,
 --   with @sep@ amount of space in between each.
 hsep :: Background -> Int -> Alignment -> [Box] -> Box
-hsep bk sep a bs = punctuateH bk a (emptyBox 0 sep) bs
+hsep bk sep a bs = punctuateH bk a (emptyBox bk 0 sep) bs
 
 -- | Glue a list of boxes together vertically, with the given alignment.
 vcat :: Background -> Alignment -> [Box] -> Box
-vcat b a bs = Box h w (Col b $ map (alignHoriz b a w) bs)
+vcat b a bs = Box h w b (Col $ map (alignHoriz b a w) bs)
   where h = sum . map rows $ bs
         w = maximum . (0:) . map cols $ bs
 
 -- | @vsep sep a bs@ lays out @bs@ vertically with alignment @a@,
 --   with @sep@ amount of space in between each.
 vsep :: Int -> Background -> Alignment -> [Box] -> Box
-vsep sep b a bs = punctuateV b a (emptyBox sep 0) bs
+vsep sep b a bs = punctuateV b a (emptyBox b sep 0) bs
 
 -- | @punctuateH a p bs@ horizontally lays out the boxes @bs@ with a
 --   copy of @p@ interspersed between each.
@@ -177,12 +178,14 @@ punctuateV b a p bs = vcat b a (intersperse p bs)
 
 instance Monoid Box where
   mappend l r = hcat defaultBackground top [l, r]
-  mempty = nullBox
+  mempty = nullBox defaultBackground
 
 -- | Paste two boxes together horizontally with a single intervening
 --   column of space, using a default (top) alignment.
 (<+>) :: Box -> Box -> Box
-l <+> r = hcat defaultBackground top [l, emptyBox 0 1, r]
+l <+> r = hcat d top [l, emptyBox d 0 1, r]
+  where
+    d = defaultBackground
 
 -- | Paste two boxes together vertically, using a default (left)
 --   alignment.
@@ -192,7 +195,9 @@ t // b = vcat defaultBackground left [t,b]
 -- | Paste two boxes together vertically with a single intervening row
 --   of space, using a default (left) alignment.
 (/+/) :: Box -> Box -> Box
-t /+/ b = vcat defaultBackground left [t, emptyBox 1 0, b]
+t /+/ b = vcat d left [t, emptyBox d 1 0, b]
+  where
+    d = defaultBackground
 
 --
 -- # Implementation
@@ -224,6 +229,8 @@ takeChunksLen b len = go len
             where
               lenX = X.length . text $ x
 
+-- FIXME BROKEN
+
 -- | @takePA @ is like 'takeP', but with alignment.  That is, we
 --   imagine a copy of @xs@ extended infinitely on both sides with
 --   copies of @a@, and a window of size @n@ placed so that @xs@ has
@@ -243,7 +250,7 @@ takePA c b n = glue . (takeP b (numRev c n) *** takeP b (numFwd c n)) . split
         numRev AlignCenter2  n = n `div` 2
 
 takePAChunks
-  :: (Background8, Background256)
+  :: Background
   -> Alignment
   -> Int
   -> [Chunk]
@@ -280,6 +287,48 @@ blanks (Background b8 b256) c = Chunk ts t
                 , style256 = mempty { background256 = b256 }
                 }
 
-renderBox :: Box -> [Chunk]
-renderBox (Box r c o) = case o of
-  Blank -> undefined
+render :: Box -> [Chunk]
+render = concat . unl . renderBox
+  where
+    unl ls = case ls of
+      [] -> []
+      x:xs -> x : nl : unl xs
+    nl = [fromString "\n"]
+
+renderBox :: Box -> [[Chunk]]
+renderBox (Box r c b o) = case o of
+  Blank -> resizeBox b r c [[]]
+  Chunks ts -> resizeBox b r c [ts]
+
+  Row bs -> resizeBox b r c
+    . merge
+    . map (renderBoxWithRows r)
+    $ bs
+    where
+      merge = foldr (zipWith (++)) (repeat [])
+
+  Col bs -> resizeBox b r c
+    . concatMap (renderBoxWithCols c)
+    $ bs
+
+  SubBox ha va sb -> resizeBoxAligned b r c ha va
+    . renderBox $ sb
+
+renderBoxWithRows :: Int -> Box -> [[Chunk]]
+renderBoxWithRows r b = renderBox b { rows = r }
+
+renderBoxWithCols :: Int -> Box -> [[Chunk]]
+renderBoxWithCols c b = renderBox b { cols = c }
+
+resizeBoxAligned
+  :: Background
+  -> Int
+  -> Int
+  -> Alignment
+  -> Alignment
+  -> [[Chunk]]
+  -> [[Chunk]]
+
+resizeBoxAligned bk r c ha va =
+  takePA va [(blanks bk c)] r
+  . map (takePAChunks bk ha c)
