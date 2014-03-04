@@ -1,5 +1,7 @@
 module Text.PrettyPrint.Rainbox where
 
+{-
+
 import Control.Arrow ((***), first)
 import Data.Monoid
 import Data.List (intersperse)
@@ -8,33 +10,6 @@ import qualified Data.Text as X
 import Text.PrettyPrint.Rainbox.Box
 
 
-
---
--- # Alignment
---
-
--- | Move a box \"up\" by putting it in a larger box with extra rows,
---   aligned to the top.  See the disclaimer for 'moveLeft'.
-moveUp :: Background -> Int -> Box -> Box
-moveUp bk n b = alignVert bk top (rows b + n) b
-
--- | Move a box down by putting it in a larger box with extra rows,
---   aligned to the bottom.  See the disclaimer for 'moveLeft'.
-moveDown :: Background -> Int -> Box -> Box
-moveDown bk n b = alignVert bk bottom (rows b + n) b
-
--- | Move a box left by putting it in a larger box with extra columns,
---   aligned left.  Note that the name of this function is
---   something of a white lie, as this will only result in the box
---   being moved left by the specified amount if it is already in a
---   larger right-aligned context.
-moveLeft :: Background -> Int -> Box -> Box
-moveLeft bk n b = alignHoriz bk left (cols b + n) b
-
--- | Move a box right by putting it in a larger box with extra
---   columns, aligned right.  See the disclaimer for 'moveLeft'.
-moveRight :: Background -> Int -> Box -> Box
-moveRight bk n b = alignHoriz bk right (cols b + n) b
 
 --
 -- # Glueing
@@ -166,7 +141,7 @@ takeChunkLen l cs
           len = X.length . text $ x
 
 -- | Resize a rendered list of lines.
-resizeBox
+renderRows
   :: Background
   -- ^ Background
   -> Int
@@ -176,7 +151,7 @@ resizeBox
   -> [[Chunk]]
   -- ^ Text of each row
   -> [[Chunk]]
-resizeBox b r c
+renderRows b r c
   = takeP [(blanks b c)] r
   . map (takeChunksPad b c)
 
@@ -205,21 +180,21 @@ render = concat . unl . renderBox
 
 renderBox :: Box -> [[Chunk]]
 renderBox (Box r c b o) = case o of
-  Blank -> resizeBox b r c [[]]
-  Chunks ts -> resizeBox b r c [ts]
+  Blank -> renderRows b r c [[]]
+  Chunks ts -> renderRows b r c [ts]
 
-  Row bs -> resizeBox b r c
+  Row bs -> renderRows b r c
     . merge
     . map (renderBoxWithRows r)
     $ bs
     where
       merge = foldr (zipWith (++)) (repeat [])
 
-  Col bs -> resizeBox b r c
+  Col bs -> renderRows b r c
     . concatMap (renderBoxWithCols c)
     $ bs
 
-  SubBox ha va sb -> resizeBoxAligned b r c ha va
+  SubBox ha va sb -> renderRowsAligned b r c ha va
     . renderBox $ sb
 
 renderBoxWithRows :: Int -> Box -> [[Chunk]]
@@ -228,7 +203,7 @@ renderBoxWithRows r b = renderBox b { rows = r }
 renderBoxWithCols :: Int -> Box -> [[Chunk]]
 renderBoxWithCols c b = renderBox b { cols = c }
 
-resizeBoxAligned
+renderRowsAligned
   :: Background
   -> Int
   -> Int
@@ -237,6 +212,8 @@ resizeBoxAligned
   -> [[Chunk]]
   -> [[Chunk]]
 
-resizeBoxAligned bk r c ha va =
+renderRowsAligned bk r c ha va =
   takePA va [(blanks bk c)] r
   . map (takePAChunks bk ha c)
+
+-}

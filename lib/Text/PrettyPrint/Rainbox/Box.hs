@@ -15,8 +15,7 @@ defaultBackground = Background (Last Nothing) (Last Nothing)
 -- | Data type for specifying the alignment of boxes.
 data Alignment
   = AlignFirst    -- ^ Align at the top/left.
-  | AlignCenter1  -- ^ Centered, biased to the top/left.
-  | AlignCenter2  -- ^ Centered, biased to the bottom/right.
+  | AlignCenter   -- ^ Centered, biased to the top/left.
   | AlignLast     -- ^ Align at the bottom/right.
   deriving (Eq, Ord, Show)
 
@@ -36,15 +35,8 @@ left       = AlignFirst
 right :: Alignment
 right      = AlignLast
 
--- | Align boxes centered, but biased to the left/top in case of
---   unequal parities.
-center1 :: Alignment
-center1    = AlignCenter1
-
--- | Align boxes centered, but biased to the right/bottom in case of
---   unequal parities.
-center2 :: Alignment
-center2    = AlignCenter2
+center :: Alignment
+center = AlignCenter
 
 -- | The basic data type.  A box has a specified size and some sort of
 --   contents.
