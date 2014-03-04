@@ -3,7 +3,6 @@ module Text.PrettyPrint.Rainbox where
 import Control.Arrow ((***), first)
 import Data.Monoid
 import Data.List (intersperse)
-import Data.String (fromString)
 import System.Console.Rainbow
 import qualified Data.Text as X
 
@@ -211,13 +210,13 @@ takeP _ n _      | n <= 0 = []
 takeP b n []              = replicate n b
 takeP b n (x:xs)          = x : takeP b (n-1) xs
 
-takeChunksLen
+takeChunksPad
   :: Background
   -> Int
   -- ^ Length
   -> [Chunk]
   -> [Chunk]
-takeChunksLen b len = go len
+takeChunksPad b len = go len
   where
     go l cs
       | l <= 0 = []
@@ -229,33 +228,56 @@ takeChunksLen b len = go len
             where
               lenX = X.length . text $ x
 
--- FIXME BROKEN
-
 -- | @takePA @ is like 'takeP', but with alignment.  That is, we
 --   imagine a copy of @xs@ extended infinitely on both sides with
 --   copies of @a@, and a window of size @n@ placed so that @xs@ has
 --   the specified alignment within the window; @takePA algn a n xs@
 --   returns the contents of this window.
-takePA :: Alignment -> a -> Int -> [a] -> [a]
+--
+-- Used for vertical padding only.  For horizontal padding see
+-- 'takePAChunks'.
+takePA :: Alignment -> [Chunk] -> Int -> [[Chunk]] -> [[Chunk]]
 takePA c b n = glue . (takeP b (numRev c n) *** takeP b (numFwd c n)) . split
   where split t = first reverse . splitAt (numRev c (length t)) $ t
         glue    = uncurry (++) . first reverse
-        numFwd AlignFirst    n = n
+        numFwd AlignFirst    x = x
         numFwd AlignLast     _ = 0
-        numFwd AlignCenter1  n = n `div` 2
-        numFwd AlignCenter2  n = (n+1) `div` 2
+        numFwd AlignCenter1  x = x `div` 2
+        numFwd AlignCenter2  x = (x+1) `div` 2
         numRev AlignFirst    _ = 0
-        numRev AlignLast     n = n
-        numRev AlignCenter1  n = (n+1) `div` 2
-        numRev AlignCenter2  n = n `div` 2
+        numRev AlignLast     x = x
+        numRev AlignCenter1  x = (x+1) `div` 2
+        numRev AlignCenter2  x = x `div` 2
 
 takePAChunks
   :: Background
   -> Alignment
   -> Int
+  -- ^ Number of columns
   -> [Chunk]
   -> [Chunk]
-takePAChunks = undefined
+takePAChunks bkgn algn ncols cs = concat [beg, cs', end]
+  where
+    (beg, cs', end) = case algn of
+
+      AlignFirst
+        | cksShort -> ([], cs, pad)
+        | otherwise -> ([], takeChunkLen ncols cs, [])
+
+    lenCks = sum . map X.length . map text $ cs
+    cksShort = lenCks < ncols
+    pad = [blanks bkgn (ncols - lenCks)]
+
+takeChunkLen :: Int -> [Chunk] -> [Chunk]
+takeChunkLen l cs
+  | l <= 0 = []
+  | otherwise = case cs of
+      [] -> []
+      x:xs
+        | len >= l -> [x { text = X.take (len - l) . text $ x } ]
+        | otherwise -> x : takeChunkLen (l - len) xs
+        where
+          len = X.length . text $ x
 
 -- | Resize a rendered list of lines.
 resizeBox
@@ -270,7 +292,7 @@ resizeBox
   -> [[Chunk]]
 resizeBox b r c
   = takeP [(blanks b c)] r
-  . map (takeChunksLen b c)
+  . map (takeChunksPad b c)
 
 
 -- | Generate spaces.
