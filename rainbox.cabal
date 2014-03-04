@@ -20,6 +20,8 @@ library
   ghc-options: -Wall
   exposed-modules:     
       Text.PrettyPrint.Rainbox
+    , Text.PrettyPrint.Rainbox.Box
+
   -- other-modules:       
   -- other-extensions:    
   build-depends:
