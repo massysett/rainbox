@@ -1,5 +1,6 @@
 module Text.PrettyPrint.Rainbox.Box where
 
+import qualified Data.Foldable as F
 import System.Console.Rainbow
 import Data.Monoid
 import qualified Data.Text as X
@@ -12,31 +13,127 @@ data Background = Background
 defaultBackground :: Background
 defaultBackground = Background (Last Nothing) (Last Nothing)
 
--- | Data type for specifying the alignment of boxes.
-data Alignment
-  = AlignFirst    -- ^ Align at the top/left.
-  | AlignCenter   -- ^ Centered, biased to the top/left.
-  | AlignLast     -- ^ Align at the bottom/right.
+newtype Row = Row { unRow :: [Chunk] }
+  deriving Show
+
+newtype Box = Box { unBox :: [Row] }
+  deriving Show
+
+rows :: Box -> Rows
+rows = Rows . length . unBox
+
+newtype Rows = Rows { unRows :: Int }
   deriving (Eq, Ord, Show)
 
--- | Align boxes along their tops.
-top :: Alignment
-top        = AlignFirst
+newtype Cols = Cols { unCols :: Int }
+  deriving (Eq, Ord, Show)
 
--- | Align boxes along their bottoms.
-bottom :: Alignment
-bottom     = AlignLast
+class HasCols a where
+  cols :: a -> Cols
 
--- | Align boxes to the left.
-left :: Alignment
-left       = AlignFirst
+instance HasCols Row where
+  cols = Cols . sum . map (X.length . text) . unRow
 
--- | Align boxes to the right.
-right :: Alignment
-right      = AlignLast
+instance HasCols Box where
+  cols b = case unBox b of
+    [] -> Cols 0
+    x:_ -> cols x
 
-center :: Alignment
-center = AlignCenter
+blank
+  :: Background
+  -> Rows
+  -> Cols
+  -> Box
+blank bk r c = Box $ replicate (unRows r) row
+  where
+    row = Row $ [ blanks bk c ]
+
+chunkBox :: [Chunk] -> Box
+chunkBox = Box . (:[]) . Row
+
+data Alignment a = Center | NonCenter a
+  deriving (Eq, Show)
+
+data Horizontal = Top | Bottom
+  deriving (Eq, Show)
+
+data Vertical = Left | Right
+  deriving (Eq, Show)
+
+hcat :: Background -> Alignment Horizontal -> [Box] -> Box
+hcat bk al bs = Box . mergeHoriz . map (pad . unBox) $ bs
+  where
+    pad = padHoriz al height
+    height = F.maximum . (Rows 0:) . map rows $ bs
+
+-- | Given the resulting height, pad a list of Rows.  So, when given
+-- a height of 3 and an alignment of Top,
+--
+-- > --------
+-- > --------
+--
+-- becomes
+--
+-- > --------
+-- > --------
+-- > ........
+--
+-- where dashes is a Row with data, and dots is a blank Row.
+
+padHoriz :: Alignment Horizontal -> Rows -> [Row] -> [Row]
+padHoriz = undefined
+
+
+-- | Merge several horizontal Rows into one set of horizontal Row.
+-- That is:
+--
+-- > ----- ----- -----
+-- > ----- ----- -----
+-- > ----- ----- -----
+--
+-- into
+--
+-- > ---------------
+-- > ---------------
+-- > ---------------
+--
+-- Strange behavior will result if each input list is not exactly
+-- the same length.
+
+mergeHoriz :: [[Row]] -> [Row]
+mergeHoriz = foldr (zipWith merge) (repeat (Row []))
+  where
+    merge (Row r1) (Row r2) = Row $ r1 ++ r2
+
+
+
+
+--
+-- # Helpers
+--
+
+-- | Generate spaces.
+blanks
+  :: Background
+  -- ^ Background colors
+  -> Cols
+  -- ^ Number of blanks
+  -> Chunk
+blanks (Background b8 b256) c = Chunk ts t
+  where
+    t = X.replicate (unCols c) (X.singleton ' ')
+    ts = mempty { style8 = mempty { background8 = b8 }
+                , style256 = mempty { background256 = b256 }
+                }
+
+-- | Split a number into two parts, so that the sum of the two parts
+-- is equal to the original number.
+split :: Int -> (Int, Int)
+split i = (r, r + rm)
+  where
+    (r, rm) = i `quotRem` 2
+
+{-
 
 -- | The basic data type.  A box has a specified size and some sort of
 --   contents.
@@ -49,21 +146,21 @@ data Box = Box
 
 -- | Contents of a box.
 data Content
-  = Blank
-  -- ^ No content.
+  = Blank Background Int Int
+  -- ^ No content.  Has given number of rows and columns.
 
   | Chunks [Chunk]
-  -- ^ A raw string.
+  -- ^ A raw string.  Has one row and a number of columns equal to
+  -- the number of characters in the component Chunks.
 
-  | Row [Box]
-  -- ^ A row of sub-boxes.
+  | Row Background [Box]
+  -- ^ A row of sub-boxes.  Number of rows is equal to the number of
+  -- rows in the tallest Box.  Number of columns is equal to the sum
+  -- of the number of columns in component Box.
 
-  | Col [Box]
-  -- ^ A column of sub-boxes.
-
-  | SubBox Alignment Alignment Box
-  -- ^ A sub-box with a specified alignment.  Alignment is
-  -- horizontal alignment first, vertical alignment second.
+  | Col Background [Box]
+  -- ^ A column of sub-boxes.  Number of columns is equal to the
+  -- number of columns 
   deriving Show
 
 -- | The null box, which has no content and no size.  It is quite
@@ -120,4 +217,4 @@ alignVert bk a r b = Box r (cols b) bk $ SubBox AlignFirst a b
 --   according to @av@.
 align :: Background -> Alignment -> Alignment -> Int -> Int -> Box -> Box
 align bk ah av r c = Box r c bk . SubBox ah av
-
+-}

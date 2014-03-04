@@ -156,20 +156,6 @@ renderRows b r c
   . map (takeChunksPad b c)
 
 
--- | Generate spaces.
-blanks
-  :: Background
-  -- ^ Background colors
-  -> Int
-  -- ^ Number of blanks
-  -> Chunk
-blanks (Background b8 b256) c = Chunk ts t
-  where
-    t = X.replicate c (X.singleton ' ')
-    ts = mempty { style8 = mempty { background8 = b8 }
-                , style256 = mempty { background256 = b256 }
-                }
-
 render :: Box -> [Chunk]
 render = concat . unl . renderBox
   where
