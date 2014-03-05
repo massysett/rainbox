@@ -22,7 +22,9 @@ library
       Text.PrettyPrint.Rainbox
     , Text.PrettyPrint.Rainbox.Box
 
-  -- other-modules:       
+  other-modules:       
+      Text.PrettyPrint.Rainbox.Box.Internal
+
   -- other-extensions:    
   build-depends:
       base >=4.5.0.0 && < 5
