@@ -1,10 +1,10 @@
 module Text.PrettyPrint.Rainbox.Box.Internal where
 
 import qualified Data.Foldable as F
-import System.Console.Rainbow
+import System.Console.Rainbow.Types
 import Data.Monoid
 import qualified Data.Text as X
-import Data.String ()
+import Data.String
 
 -- # Background
 
