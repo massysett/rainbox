@@ -22,9 +22,6 @@ library
       Text.PrettyPrint.Rainbox
     , Text.PrettyPrint.Rainbox.Box
 
-  other-modules:       
-      Text.PrettyPrint.Rainbox.Box.Internal
-
   build-depends:
       base >=4.5.0.0 && < 5
     , rainbow >= 0.10.2.0
@@ -35,6 +32,7 @@ library
 
 Test-Suite rainbox-test
   type: exitcode-stdio-1.0
+  ghc-options: -Wall
   Main-is: rainbox-test.hs
   hs-source-dirs: test lib
   default-language:    Haskell2010
@@ -51,5 +49,4 @@ Test-Suite rainbox-test
       TextDir
     , Text.PrettyPrintDir
     , Text.PrettyPrint.RainboxDir
-    , Text.PrettyPrint.Rainbox.BoxDir
-    , Text.PrettyPrint.Rainbox.Box.InternalTests
+    , Text.PrettyPrint.Rainbox.BoxTests
