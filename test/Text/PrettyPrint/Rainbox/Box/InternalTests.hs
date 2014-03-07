@@ -1,21 +1,25 @@
 module Text.PrettyPrint.Rainbox.Box.InternalTests where
 
+import Control.Monad
 import Control.Applicative
 import Test.Tasty
 import Test.QuickCheck
 import Data.Monoid
 import System.Console.Rainbow
+import qualified Data.Text as X
+import qualified Test.Rainbow.Generators as G
+import Text.PrettyPrint.Rainbox.Box.Internal
 
 tests :: TestTree
 tests = testGroup "InternalTests" []
 
-genLast :: Gen a -> Gen (Last a)
-genLast g = Last
-  <$> frequency [(3, Just <$> g), (1, return Nothing)]
+genText :: Gen X.Text
+genText = fmap X.pack $ listOf c
+  where
+    c = elements ['0'..'Z']
 
-genColor8 :: Gen Color
-genColor8 = elements
-  [ Black, Red, Green, Yellow, Blue, Magenta, Cyan, White ]
+genChunk :: Gen Chunk
+genChunk = genText >>= G.chunk
 
-genBackground8 :: Gen Background8
-genBackground8 = genLast genColor8
+genBackground :: Gen Background
+genBackground = liftM2 Background G.colors8 G.colors256

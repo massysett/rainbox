@@ -5,18 +5,19 @@ import System.Console.Rainbow.Types
 import Data.Monoid
 import qualified Data.Text as X
 import Data.String
+import System.Console.Rainbow.Colors
 
 -- # Background
 
 -- | Background colors to use when inserting necessary padding.
 data Background = Background
-  { boxBackground8 :: Background8
-  , boxBackground256 :: Background256
+  { boxBackground8 :: Color8
+  , boxBackground256 :: Color256
   } deriving Show
 
 -- | Use the default background colors of the current terminal.
 defaultBackground :: Background
-defaultBackground = Background (Last Nothing) (Last Nothing)
+defaultBackground = Background c8_default c256_default
 
 -- # Box
 
@@ -340,8 +341,8 @@ blanks
 blanks (Background b8 b256) c = Chunk ts t
   where
     t = X.replicate (unCols c) (X.singleton ' ')
-    ts = mempty { style8 = mempty { background8 = b8 }
-                , style256 = mempty { background256 = b256 }
+    ts = mempty { style8 = mempty { background8 = Last . Just $ b8 }
+                , style256 = mempty { background256 = Last . Just $ b256 }
                 }
 
 -- | Split a number into two parts, so that the sum of the two parts
