@@ -191,7 +191,9 @@ right = NonCenter ARight
 -- > --------------
 
 hcat :: Background -> Align Vert -> [Box] -> Box
-hcat bk al bs = Box . mergeHoriz . map (pad . unBox) $ bs
+hcat bk al bs
+  | null bs = Box []
+  | otherwise = Box . mergeHoriz . map (pad . unBox) $ bs
   where
     pad = padHoriz bk al height
     height = F.maximum . (Rows 0:) . map rows $ bs
@@ -228,7 +230,9 @@ hcat bk al bs = Box . mergeHoriz . map (pad . unBox) $ bs
 -- > ...----
 
 vcat :: Background -> Align Horiz -> [Box] -> Box
-vcat bk al bs = Box . map (padVert bk al w) . concat . map unBox $ bs
+vcat bk al bs
+  | null bs = Box []
+  | otherwise = Box . map (padVert bk al w) . concat . map unBox $ bs
   where
     w = F.maximum . (Cols 0:) . map cols $ bs
 
@@ -272,9 +276,9 @@ padHoriz bk a (Rows tgt) rs = concat [tp, rs, bot]
 -- > ...-------
 
 padVert :: Background -> Align Horiz -> Cols -> Row -> Row
-padVert bk a (Cols tgt) (Row cs) = Row . concat $ [lft, cs, rght]
+padVert bk a (Cols tgt) rw@(Row cs) = Row . concat $ [lft, cs, rght]
   where
-    nPad = max 0 $ tgt - length cs
+    nPad = max 0 $ tgt - (unCols . cols $ rw)
     (nLeft, nRight) = case a of
       Center -> split nPad
       NonCenter ALeft -> (0, nPad)

@@ -36,6 +36,7 @@ Test-Suite rainbox-test
   Main-is: rainbox-test.hs
   hs-source-dirs: test lib
   default-language:    Haskell2010
+  ghc-prof-options: -fprof-auto -caf-all
   build-depends:
       tasty >= 0.8
     , tasty-quickcheck >= 0.8
