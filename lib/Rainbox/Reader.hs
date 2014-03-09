@@ -97,54 +97,54 @@ data Specs = Specs
   --  ^ Amount of intervening space for vertical joins
   } deriving (Eq, Show)
 
-type Env = Reader Specs
+type Env = ReaderT Specs
 
-blankH :: Int -> Env Box
+blankH :: Monad m => Int -> Env m Box
 blankH i = do
   b <- asks background
   return $ R.blankH b i
 
-blankV :: Int -> Env Box
+blankV :: Monad m => Int -> Env m Box
 blankV i = do
   b <- asks background
   return $ R.blankV b i
 
-catH :: [Box] -> Env Box
+catH :: Monad m => [Box] -> Env m Box
 catH bxs = do
   bk <- asks background
   al <- asks alignV
   return $ B.catH bk al bxs
 
-catV :: [Box] -> Env Box
+catV :: Monad m => [Box] -> Env m Box
 catV bxs = do
   bk <- asks background
   al <- asks alignH
   return $ B.catV bk al bxs
 
-grow :: Rows -> Cols -> Box -> Env Box
+grow :: Monad m => Rows -> Cols -> Box -> Env m Box
 grow r c bx = do
   b <- asks background
   h <- asks alignH
   v <- asks alignV
   return $ R.grow b r c h v bx
 
-growH :: Int -> Box -> Env Box
+growH :: Monad m => Int -> Box -> Env m Box
 growH i bx = do
   b <- asks background
   h <- asks alignH
   return $ R.growH b i h bx
 
-growV :: Int -> Box -> Env Box
+growV :: Monad m => Int -> Box -> Env m Box
 growV i bx = do
   b <- asks background
   v <- asks alignV
   return $ R.growV b i v bx
 
 resize
-  :: Rows
+  :: Monad m => Rows
   -> Cols
   -> Box
-  -> Env Box
+  -> Env m Box
 resize r c bx = do
   b <- asks background
   h <- asks alignH
@@ -152,89 +152,92 @@ resize r c bx = do
   return $ R.resize b r c h v bx
 
 resizeH
-  :: Int
+  :: Monad m => Int
   -> Box
-  -> Env Box
+  -> Env m Box
 resizeH i bx = do
   b <- asks background
   h <- asks alignH
   return $ R.resizeH b i h bx
 
 resizeV
-  :: Int
+  :: Monad m => Int
   -> Box
-  -> Env Box
+  -> Env m Box
 resizeV i bx = do
   b <- asks background
   v <- asks alignV
   return $ R.resizeV b i v bx
 
 sepH
-  :: Int
+  :: Monad m => Int
   -> [Box]
-  -> Env Box
+  -> Env m Box
 sepH i bx = do
   b <- asks background
   v <- asks alignV
   return $ R.sepH b i v bx
 
 sepV
-  :: Int
+  :: Monad m => Int
   -> [Box]
-  -> Env Box
+  -> Env m Box
 sepV i bx = do
   b <- asks background
   h <- asks alignH
   return $ R.sepV b i h bx
 
 punctuateH
-  :: Box
+  :: Monad m => Box
   -> [Box]
-  -> Env Box
+  -> Env m Box
 punctuateH bx bxs = do
   b <- asks background
   v <- asks alignV
   return $ R.punctuateH b v bx bxs
 
 punctuateV
-  :: Box
+  :: Monad m => Box
   -> [Box]
-  -> Env Box
+  -> Env m Box
 punctuateV bx bxs = do
   b <- asks background
   h <- asks alignH
   return $ R.punctuateV b h bx bxs
 
 view
-  :: Rows
+  :: Monad m => Rows
   -> Cols
   -> Box
-  -> Env Box
+  -> Env m Box
 view = undefined
 
 viewH
-  :: Int
+  :: Monad m => Int
   -> Box
-  -> Env Box
+  -> Env m Box
 viewH = undefined
 
 viewV
-  :: Int
+  :: Monad m => Int
   -> Box
-  -> Env Box
+  -> Env m Box
 viewV = undefined
 
 -- | Paste two 'Box' together horizontally with no intervening
--- space.
-(<->) :: Box -> Box -> Env Box
+-- space.  Left fixity, precedence 5.
+(<->) :: Monad m => Box -> Box -> Env m Box
 (<->) l r = do
   b <- asks background
   a <- asks alignV
   return $ B.catH b a [l, r]
 
--- | Paste two 'Box' together.  Intervening space is determined by
--- 'spaceH'.
-(<+>) :: Box -> Box -> Env Box
+infixl 5 <->
+
+-- | Paste two 'Box' together horizontally.  Intervening space is
+-- determined by 'spaceH'.
+-- Left fixity, precedence 5.
+(<+>) :: Monad m => Box -> Box -> Env m Box
 (<+>) l r = do
   bk <- asks background
   a <- asks alignV
@@ -242,19 +245,26 @@ viewV = undefined
   bx <- blankH sp
   return $ B.catH bk a [ l, bx, r ]
 
+infixl 5 <+>
+
 -- | Paste two 'Box' together vertically with no intervening space.
-(/-/) :: Box -> Box -> Env Box
+-- Left fixity, precedence 6.
+(/-/) :: Monad m => Box -> Box -> Env m Box
 (/-/) h l = do
   b <- asks background
   a <- asks alignH
   return $ B.catV b a [ h, l ]
 
+infixl 6 /-/
+
 -- | Paste two 'Box' together vertically.  Intervening space is
--- determined by 'spaceV'.
-(/+/) :: Box -> Box -> Env Box
+-- determined by 'spaceV'.  Left fixity, precedence 6.
+(/+/) :: Monad m => Box -> Box -> Env m Box
 (/+/) h l = do
   bk <- asks background
   a <- asks alignH
   sp <- asks spaceV
   bx <- blankV sp
   return $ B.catV bk a [ h, bx, l ]
+
+infixl 6 /+/

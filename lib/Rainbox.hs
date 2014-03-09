@@ -152,7 +152,8 @@ viewV = undefined
 --
 
 -- | Resize a 'Box'.  Will grow or trim it as necessary in order to
--- reach the resulting size.
+-- reach the resulting size.  Returns an empty 'Box' if either
+-- 'Rows' or 'Cols' is less than 1.
 
 resize
   :: Background
