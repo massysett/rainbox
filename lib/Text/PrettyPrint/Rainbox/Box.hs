@@ -99,10 +99,6 @@ newtype Box = Box { unBox :: [Row] }
 instance IsString Box where
   fromString = Box . (:[]) . Row . (:[]) . fromString
 
-instance Monoid Box where
-  mappend x y = hcat defaultBackground top [x, y]
-  mempty = Box []
-
 -- # Rows and Cols
 
 -- | A count of rows
