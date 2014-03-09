@@ -1,7 +1,9 @@
 module Main where
 
-import qualified TextDir
+import qualified RainboxDir
 import Test.Tasty
 
 main :: IO ()
-main = defaultMain $ testGroup "rainbox" [TextDir.tests]
+main = defaultMain $ testGroup "rainbox"
+  [ RainboxDir.tests
+  ]

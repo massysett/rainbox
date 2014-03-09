@@ -1,9 +1,9 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Text.PrettyPrint.Rainbox where
+module Rainbox where
 
 import System.Console.Rainbow
-import qualified Text.PrettyPrint.Rainbox.Box as B
-import Text.PrettyPrint.Rainbox.Box
+import qualified Rainbox.Box as B
+import Rainbox.Box
   ( Box
   , Align
   , Horiz

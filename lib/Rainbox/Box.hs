@@ -20,7 +20,7 @@
 -- dash means a character with data; a period means a blank
 -- character.  When you print your 'Box', the blank characters will
 -- have the appropriate background color.
-module Text.PrettyPrint.Rainbox.Box
+module Rainbox.Box
   ( -- * Background
     Background(..)
   , defaultBackground
