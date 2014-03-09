@@ -47,7 +47,7 @@ module Rainbox.Reader
   , catV
   , sepH
   , sepV
-  , punctuateH -- # FIXME inconsistent naming - sepH and sepV then.
+  , punctuateH
   , punctuateV
   , (<->)
   , (<+>)
