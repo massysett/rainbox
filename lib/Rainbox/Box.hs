@@ -88,17 +88,33 @@ defaultBackground = Background c8_default c256_default
 -- take up only one screen column.  So, if you need accented
 -- characters, use a single Unicode code point, not two code points.
 newtype Row = Row { unRow :: [Chunk] }
-  deriving Show
+  deriving (Eq, Show)
 
 instance Monoid Row where
   mempty = Row []
   mappend (Row l) (Row r) = Row $ l ++ r
 
--- | A 'Box' is just a list of 'Row'.  This type is abstract so that
--- the module can enforce the restriction that each 'Row' in a 'Box'
--- always contains the same number of characters.
-newtype Box = Box { unBox :: [Row] }
-  deriving Show
+-- | A 'Box' has a width in columns and a height in rows.  Its
+-- height and width both are always at least zero.  It can have
+-- positive height even if its width is zero, and it can have
+-- positive width even if its height is zero.
+--
+-- Each row in a 'Box' always has the same number of characters; a
+-- 'Box' with zero height has no characters but still has a certain
+-- width.
+
+newtype Box = Box { unBox :: BoxP }
+  deriving (Eq, Show)
+
+-- | Box payload.  Has the data of the box.
+data BoxP
+  = NoHeight Int
+  -- ^ A Box with width but no height.  The Int must be at least
+  -- zero.  If it is zero, the Box has no height and no width.
+  | WithHeight [Row]
+  -- ^ A Box that has height of at least one.  It must have at least
+  -- one component Row.
+  deriving (Eq, Show)
 
 instance IsString Box where
   fromString = Box . (:[]) . Row . (:[]) . fromString
@@ -111,7 +127,9 @@ newtype Rows = Rows { unRows :: Int }
 
 -- | How many 'Row' are in this 'Box'?
 rows :: Box -> Rows
-rows = Rows . length . unBox
+rows b = case unBox b of
+  NoHeight _ -> Rows 0
+  WithHeight rs -> Rows . length $ rs
 
 -- | A count of columns
 newtype Cols = Cols { unCols :: Int }
@@ -128,8 +146,10 @@ instance HasCols Row where
 
 instance HasCols Box where
   cols b = case unBox b of
-    [] -> Cols 0
-    x:_ -> cols x
+    NoHeight i -> Cols i
+    WithHeight rs -> case rs of
+      [] -> error "cols: error"
+      x:_ -> cols x
 
 -- # Making Boxes
 
@@ -139,14 +159,16 @@ blank
   -> Rows
   -> Cols
   -> Box
-blank bk r c = Box $ replicate (unRows r) row
+blank bk r c
+  | unRows r < 1 = Box $ NoHeight (max 0 (unCols c))
+  | otherwise = Box $ replicate (unRows r) row
   where
     row = Row $ [ blanks bk c ]
 
 -- | A 'Box' made of 'Chunk'.  Always one Row tall, and has as many
 -- columns as there are characters in the 'Chunk'.
 chunks :: [Chunk] -> Box
-chunks = Box . (:[]) . Row
+chunks = Box . WithHeight . (:[]) . Row
 
 -- | Alignment.
 data Align a = Center | NonCenter a
@@ -174,6 +196,8 @@ left = NonCenter ALeft
 
 right :: Align Horiz
 right = NonCenter ARight
+
+-- # START HERE
 
 -- | Merge several Box horizontally into one Box.  That is, with
 -- alignment set to ATop:
