@@ -68,7 +68,7 @@ import System.Console.Rainbow.Colors
 data Background = Background
   { boxBackground8 :: Color8
   , boxBackground256 :: Color256
-  } deriving Show
+  } deriving (Eq, Show)
 
 -- | Use the default background colors of the current terminal.
 defaultBackground :: Background
@@ -89,6 +89,10 @@ defaultBackground = Background c8_default c256_default
 -- characters, use a single Unicode code point, not two code points.
 newtype Row = Row { unRow :: [Chunk] }
   deriving Show
+
+instance Monoid Row where
+  mempty = Row []
+  mappend (Row l) (Row r) = Row $ l ++ r
 
 -- | A 'Box' is just a list of 'Row'.  This type is abstract so that
 -- the module can enforce the restriction that each 'Row' in a 'Box'

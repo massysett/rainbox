@@ -1,5 +1,64 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Rainbox where
+module Rainbox
+  ( -- * Backgrounds
+    Background(..)
+  , B.defaultBackground
+  
+  -- * Box properties
+  , B.Row(..)
+  , B.Box
+  , B.unBox
+
+  -- * Rows and columns
+  , Rows(..)
+  , B.rows
+  , Cols(..)
+  , B.HasCols(..)
+
+  -- * Alignment
+  , Align
+  , Vert
+  , Horiz
+  , B.center
+  , B.top
+  , B.bottom
+  , B.left
+  , B.right
+
+  -- * Making Boxes
+  , B.blank
+  , blankH
+  , blankV
+  , B.chunks
+  , chunk
+
+  -- * Pasting Boxes together
+  , B.hcat
+  , B.vcat
+  , hsep
+  , vsep
+  , punctuateH -- # FIXME inconsistent naming - sepH and sepV then.
+  , punctuateV
+
+  -- * Viewing Boxes
+  , B.view
+  , viewH
+  , viewV
+
+  -- * Growing Boxes
+  , grow
+  , growH
+  , growV
+
+  -- * Resizing
+  , resize
+  , resizeH
+  , resizeV
+
+  -- * Printing Boxes
+  , render
+  , printBox
+  ) where
 
 import System.Console.Rainbow
 import qualified Rainbox.Box as B
@@ -27,6 +86,10 @@ blankH = undefined
 -- | A blank vertical box with a given length.
 blankV :: Background -> Int -> Box
 blankV = undefined
+
+-- | A Box made of a single 'Chunk'.
+chunk :: Chunk -> Box
+chunk = B.chunks . (:[])
 
 -- | Grow a box.  Each dimension of the result 'Box' is never smaller
 -- than the corresponding dimension of the input 'Box'.  Analogous to
@@ -154,3 +217,4 @@ printBox :: Box -> IO ()
 printBox b = do
   t <- smartTermFromEnv IO.stdout
   hPutChunks IO.stdout t . render $ b
+
