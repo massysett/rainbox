@@ -73,24 +73,24 @@ data ChunksInputs = ChunksInputs
 instance Arbitrary ChunksInputs where
   arbitrary = ChunksInputs <$> listOf genChunk
 
-data HcatInputs = HcatInputs
+data CatHInputs = CatHInputs
   { hcBackground :: Background
   , hcAlign :: Align Vert
   , hcBoxes :: [Box]
   } deriving Show
 
-instance Arbitrary HcatInputs where
-  arbitrary = liftM3 HcatInputs genBackground genAlignVert
+instance Arbitrary CatHInputs where
+  arbitrary = liftM3 CatHInputs genBackground genAlignVert
     (listOf genBox)
 
-data VcatInputs = VcatInputs
+data CatVInputs = CatVInputs
   { vcBackground :: Background
   , vcAlign :: Align Horiz
   , vcBoxes :: [Box]
   } deriving Show
 
-instance Arbitrary VcatInputs where
-  arbitrary = liftM3 VcatInputs genBackground genAlignHoriz
+instance Arbitrary CatVInputs where
+  arbitrary = liftM3 CatVInputs genBackground genAlignHoriz
     (listOf genBox)
 
 data ViewInputs = ViewInputs
@@ -139,35 +139,35 @@ tests = testGroup "BoxTests"
       in (== Cols nChars) . cols . chunks $ ci
     ]
 
-  , testGroup "hcat"
+  , testGroup "catH"
     [ testProperty "makes valid Box" $
-      \(HcatInputs bk a bs) -> validBox $ hcat bk a bs
+      \(CatHInputs bk a bs) -> validBox $ catH bk a bs
 
     , testProperty "is as tall as tallest box" $
-      \(HcatInputs bk a bs) ->
+      \(CatHInputs bk a bs) ->
       let h = maximum . (Rows 0 :) . map rows $ bs
-      in (== h) . rows $ hcat bk a bs
+      in (== h) . rows $ catH bk a bs
 
     , testProperty "is as wide as sum of all widths" $
-      \(HcatInputs bk a bs) ->
+      \(CatHInputs bk a bs) ->
       let s = sum . map (unCols . cols) $ bs
-      in (== s) . unCols . cols $ hcat bk a bs
+      in (== s) . unCols . cols $ catH bk a bs
     ]
 
-  , testGroup "vcat"
+  , testGroup "catV"
     [ testProperty "makes a valid Box" $
-      \(VcatInputs bk a bs) ->
-      validBox $ vcat bk a bs
+      \(CatVInputs bk a bs) ->
+      validBox $ catV bk a bs
 
     , testProperty "is as tall as the sum of all heights" $
-      \(VcatInputs bk a bs) ->
+      \(CatVInputs bk a bs) ->
       let h = sum . map (unRows . rows) $ bs
-      in (== h) . unRows . rows $ vcat bk a bs
+      in (== h) . unRows . rows $ catV bk a bs
 
     , testProperty "is as wide as the widest box" $
-      \(VcatInputs bk a bs) ->
+      \(CatVInputs bk a bs) ->
       let w = maximum . (Cols 0:) . map cols $ bs
-      in (== w) . cols $ vcat bk a bs
+      in (== w) . cols $ catV bk a bs
     ]
 
   , testGroup "view"

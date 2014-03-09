@@ -33,11 +33,11 @@ module Rainbox
   , chunk
 
   -- * Pasting Boxes together
-  , B.hcat
-  , B.vcat
-  , hsep
-  , vsep
-  , punctuateH -- # FIXME inconsistent naming - sepH and sepV then.
+  , B.catH
+  , B.catV
+  , sepH
+  , sepV
+  , punctuateH
   , punctuateV
 
   -- * Viewing Boxes
@@ -188,15 +188,15 @@ resizeV = undefined
 -- # Glueing
 --
 
--- | @hsep sep a bs@ lays out @bs@ horizontally with alignment @a@,
+-- | @sepH sep a bs@ lays out @bs@ horizontally with alignment @a@,
 --   with @sep@ amount of space in between each.
-hsep :: Background -> Int -> Align Vert -> [Box] -> Box
-hsep bk sep a bs = undefined
+sepH :: Background -> Int -> Align Vert -> [Box] -> Box
+sepH bk sep a bs = undefined
 
--- | @vsep sep a bs@ lays out @bs@ vertically with alignment @a@,
+-- | @sepV sep a bs@ lays out @bs@ vertically with alignment @a@,
 --   with @sep@ amount of space in between each.
-vsep :: Background -> Int -> Align Horiz -> [Box] -> Box
-vsep sep b a bs = undefined
+sepV :: Background -> Int -> Align Horiz -> [Box] -> Box
+sepV sep b a bs = undefined
 
 -- | @punctuateH a p bs@ horizontally lays out the boxes @bs@ with a
 --   copy of @p@ interspersed between each.

@@ -43,10 +43,10 @@ module Rainbox.Reader
   , R.chunk
 
   -- * Pasting Boxes together
-  , hcat
-  , vcat
-  , hsep
-  , vsep
+  , catH
+  , catV
+  , sepH
+  , sepV
   , punctuateH -- # FIXME inconsistent naming - sepH and sepV then.
   , punctuateV
   , (<->)
@@ -109,17 +109,17 @@ blankV i = do
   b <- asks background
   return $ R.blankV b i
 
-hcat :: [Box] -> Env Box
-hcat bxs = do
+catH :: [Box] -> Env Box
+catH bxs = do
   bk <- asks background
   al <- asks alignV
-  return $ B.hcat bk al bxs
+  return $ B.catH bk al bxs
 
-vcat :: [Box] -> Env Box
-vcat bxs = do
+catV :: [Box] -> Env Box
+catV bxs = do
   bk <- asks background
   al <- asks alignH
-  return $ B.vcat bk al bxs
+  return $ B.catV bk al bxs
 
 grow :: Rows -> Cols -> Box -> Env Box
 grow r c bx = do
@@ -169,23 +169,23 @@ resizeV i bx = do
   v <- asks alignV
   return $ R.resizeV b i v bx
 
-hsep
+sepH
   :: Int
   -> [Box]
   -> Env Box
-hsep i bx = do
+sepH i bx = do
   b <- asks background
   v <- asks alignV
-  return $ R.hsep b i v bx
+  return $ R.sepH b i v bx
 
-vsep
+sepV
   :: Int
   -> [Box]
   -> Env Box
-vsep i bx = do
+sepV i bx = do
   b <- asks background
   h <- asks alignH
-  return $ R.vsep b i h bx
+  return $ R.sepV b i h bx
 
 punctuateH
   :: Box
@@ -230,7 +230,7 @@ viewV = undefined
 (<->) l r = do
   b <- asks background
   a <- asks alignV
-  return $ B.hcat b a [l, r]
+  return $ B.catH b a [l, r]
 
 -- | Paste two 'Box' together.  Intervening space is determined by
 -- 'spaceH'.
@@ -240,14 +240,14 @@ viewV = undefined
   a <- asks alignV
   sp <- asks spaceH
   bx <- blankH sp
-  return $ B.hcat bk a [ l, bx, r ]
+  return $ B.catH bk a [ l, bx, r ]
 
 -- | Paste two 'Box' together vertically with no intervening space.
 (/-/) :: Box -> Box -> Env Box
 (/-/) h l = do
   b <- asks background
   a <- asks alignH
-  return $ B.vcat b a [ h, l ]
+  return $ B.catV b a [ h, l ]
 
 -- | Paste two 'Box' together vertically.  Intervening space is
 -- determined by 'spaceV'.
@@ -257,4 +257,4 @@ viewV = undefined
   a <- asks alignH
   sp <- asks spaceV
   bx <- blankV sp
-  return $ B.vcat bk a [ h, bx, l ]
+  return $ B.catV bk a [ h, bx, l ]

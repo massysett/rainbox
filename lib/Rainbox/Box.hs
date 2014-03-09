@@ -10,9 +10,9 @@
 --
 -- * 'chunks' - Makes a box out of Rainbow 'Chunk'.
 --
--- * 'hcat' - paste 'Box' together horizontally
+-- * 'catH' - paste 'Box' together horizontally
 --
--- * 'vcat' - paste 'Box' together vertically
+-- * 'catV' - paste 'Box' together vertically
 --
 -- * 'view' - take a portion of an already-existing 'Box'.
 --
@@ -49,8 +49,8 @@ module Rainbox.Box
   -- * Making Boxes
   , blank
   , chunks
-  , hcat
-  , vcat
+  , catH
+  , catV
   , view
 
   ) where
@@ -194,8 +194,8 @@ right = NonCenter ARight
 -- > ----------....
 -- > --------------
 
-hcat :: Background -> Align Vert -> [Box] -> Box
-hcat bk al bs
+catH :: Background -> Align Vert -> [Box] -> Box
+catH bk al bs
   | null bs = Box []
   | otherwise = Box . mergeHoriz . map (pad . unBox) $ bs
   where
@@ -233,8 +233,8 @@ hcat bk al bs
 -- > ...----
 -- > ...----
 
-vcat :: Background -> Align Horiz -> [Box] -> Box
-vcat bk al bs
+catV :: Background -> Align Horiz -> [Box] -> Box
+catV bk al bs
   | null bs = Box []
   | otherwise = Box . map (padVert bk al w) . concat . map unBox $ bs
   where
@@ -324,7 +324,7 @@ mergeHoriz = foldr (zipWith merge) (repeat (Row []))
 -- Examples:
 --
 -- >>> :set -XOverloadedStrings
--- >>> let box = vcat defaultBackground top [ "ab", "cd" ]
+-- >>> let box = catV defaultBackground top [ "ab", "cd" ]
 -- >>> printBox . view (Rows 1) (Cols 1) left top $ box
 -- a
 --
