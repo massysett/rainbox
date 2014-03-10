@@ -9,11 +9,11 @@ module Rainbox
   , B.Box
   , B.unBox
 
-  -- * Rows and columns
-  , Rows(..)
+  -- * Height and columns
+  , Height(..)
   , B.rows
-  , Cols(..)
-  , B.HasCols(..)
+  , Width(..)
+  , B.HasWidth(..)
 
   -- * Alignment
   , Align
@@ -67,8 +67,8 @@ import Rainbox.Box
   , Align
   , Horiz
   , Vert
-  , Rows
-  , Cols
+  , Height
+  , Width
   , Background
   , unRow
   , unBox
@@ -100,8 +100,8 @@ chunk = B.chunks . (:[])
 
 grow
   :: Background
-  -> Rows
-  -> Cols
+  -> Height
+  -> Width
   -> Align Horiz
   -> Align Vert
   -> Box
@@ -153,12 +153,12 @@ viewV = undefined
 
 -- | Resize a 'Box'.  Will grow or trim it as necessary in order to
 -- reach the resulting size.  Returns an empty 'Box' if either
--- 'Rows' or 'Cols' is less than 1.
+-- 'Height' or 'Width' is less than 1.
 
 resize
   :: Background
-  -> Rows
-  -> Cols
+  -> Height
+  -> Width
   -> Align Horiz
   -> Align Vert
   -> Box

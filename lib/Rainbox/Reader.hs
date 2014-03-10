@@ -15,11 +15,11 @@ module Rainbox.Reader
   , B.Box
   , B.unBox
 
-  -- * Rows and columns
-  , B.Rows(..)
+  -- * Height and columns
+  , B.Height(..)
   , B.rows
-  , B.Cols(..)
-  , B.HasCols(..)
+  , B.Width(..)
+  , B.HasWidth(..)
 
   -- * Alignment
   , B.Align
@@ -80,8 +80,8 @@ import qualified Rainbox.Box as B
 import qualified Rainbox as R
 import Rainbox.Box
   ( Box
-  , Rows
-  , Cols
+  , Height
+  , Width
   , Align
   , Horiz
   , Vert
@@ -121,7 +121,7 @@ catV bxs = do
   al <- asks alignH
   return $ B.catV bk al bxs
 
-grow :: Monad m => Rows -> Cols -> Box -> Env m Box
+grow :: Monad m => Height -> Width -> Box -> Env m Box
 grow r c bx = do
   b <- asks background
   h <- asks alignH
@@ -141,8 +141,8 @@ growV i bx = do
   return $ R.growV b i v bx
 
 resize
-  :: Monad m => Rows
-  -> Cols
+  :: Monad m => Height
+  -> Width
   -> Box
   -> Env m Box
 resize r c bx = do
@@ -206,8 +206,8 @@ punctuateV bx bxs = do
   return $ R.punctuateV b h bx bxs
 
 view
-  :: Monad m => Rows
-  -> Cols
+  :: Monad m => Height
+  -> Width
   -> Box
   -> Env m Box
 view = undefined
