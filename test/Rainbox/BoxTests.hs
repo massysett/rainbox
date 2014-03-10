@@ -51,8 +51,10 @@ genAlignHoriz = elements [ center, left, right ]
 
 validBox :: Box -> Bool
 validBox box = case unBox box of
-  [] -> True
-  x:xs -> all (== cols x) . map cols $ xs
+  NoHeight i -> i > -1
+  WithHeight rw -> case rw of
+    [] -> False
+    x:xs -> all (== cols x) . map cols $ xs
 
 biggest :: Int -> Gen a -> Gen a
 biggest m g = sized $ \s -> resize (min s m) g

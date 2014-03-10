@@ -209,7 +209,10 @@ punctuateV :: Background -> Align Horiz -> Box -> [Box] -> Box
 punctuateV b a p bs = undefined
 
 render :: Box -> [Chunk]
-render = concat . concat . map (: [["\n"]]) . map unRow . unBox
+render bx = case unBox bx of
+  B.NoHeight _ -> []
+  B.WithHeight rw ->
+    concat . concat . map (: [["\n"]]) . map unRow $ rw
 
 -- | Prints a Box to standard output.  If standard output is not a
 -- terminal, no colors are used.  Otherwise, colors are used if your

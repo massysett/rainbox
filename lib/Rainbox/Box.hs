@@ -27,6 +27,7 @@ module Rainbox.Box
 
   -- * Box
   , Row(..)
+  , BoxP(..)
   , Box
   , unBox
 
@@ -90,6 +91,9 @@ defaultBackground = Background c8_default c256_default
 newtype Row = Row { unRow :: [Chunk] }
   deriving (Eq, Show)
 
+instance IsString Row where
+  fromString = Row . (:[]) . fromString
+
 instance Monoid Row where
   mempty = Row []
   mappend (Row l) (Row r) = Row $ l ++ r
@@ -117,7 +121,7 @@ data BoxP
   deriving (Eq, Show)
 
 instance IsString Box where
-  fromString = Box . (:[]) . Row . (:[]) . fromString
+  fromString = Box . WithHeight . (:[]) . fromString
 
 -- # Rows and Cols
 
@@ -161,7 +165,7 @@ blank
   -> Box
 blank bk r c
   | unRows r < 1 = Box $ NoHeight (max 0 (unCols c))
-  | otherwise = Box $ replicate (unRows r) row
+  | otherwise = Box . WithHeight $ replicate (unRows r) row
   where
     row = Row $ [ blanks bk c ]
 
@@ -197,8 +201,6 @@ left = NonCenter ALeft
 right :: Align Horiz
 right = NonCenter ARight
 
--- # START HERE
-
 -- | Merge several Box horizontally into one Box.  That is, with
 -- alignment set to ATop:
 --
@@ -220,7 +222,7 @@ right = NonCenter ARight
 
 catH :: Background -> Align Vert -> [Box] -> Box
 catH bk al bs
-  | null bs = Box []
+  | null bs = Box $ NoHeight 0
   | otherwise = Box . mergeHoriz . map (pad . unBox) $ bs
   where
     pad = padHoriz bk al height
@@ -259,10 +261,21 @@ catH bk al bs
 
 catV :: Background -> Align Horiz -> [Box] -> Box
 catV bk al bs
-  | null bs = Box []
-  | otherwise = Box . map (padVert bk al w) . concat . map unBox $ bs
+  | null bs = Box $ NoHeight 0
+  | otherwise = Box . foldr f (NoHeight (unCols w))
+      . concat . map (flatten . unBox) $ bs
   where
     w = F.maximum . (Cols 0:) . map cols $ bs
+    f ei bp = case padVert bk al w ei of
+      Left nh -> case bp of
+        NoHeight wOld -> NoHeight (max (unCols w) wOld)
+        x -> x
+      Right wh -> case bp of
+        WithHeight rw -> WithHeight $ wh : rw
+        _ -> WithHeight [wh]
+    flatten bp = case bp of
+      NoHeight i -> [Left i]
+      WithHeight rs -> map Right rs
 
 
 -- | Given the resulting height, pad a list of Rows.  So, when given
@@ -279,7 +292,10 @@ catV bk al bs
 --
 -- where dashes is a 'Row' with data, and dots is a blank 'Row'.
 
-padHoriz :: Background -> Align Vert -> Rows -> [Row] -> [Row]
+padHoriz :: Background -> Align Vert -> Rows -> BoxP -> BoxP
+padHoriz = undefined
+--padHoriz :: Background -> Align Vert -> Rows -> [Row] -> [Row]
+{-
 padHoriz bk a (Rows tgt) rs = concat [tp, rs, bot]
   where
     nPad = max 0 $ tgt - length rs
@@ -293,6 +309,7 @@ padHoriz bk a (Rows tgt) rs = concat [tp, rs, bot]
           [] -> Cols 0
           x:_ -> cols x
     (tp, bot) = (replicate nATop pad, replicate nBot pad)
+-}
 
 -- | Given the resulting width, pad a 'Row'.  So, when given
 -- a width of 10 and an alignment of 'right',
@@ -303,6 +320,14 @@ padHoriz bk a (Rows tgt) rs = concat [tp, rs, bot]
 --
 -- > ...-------
 
+padVert
+  :: Background
+  -> Align Horiz
+  -> Cols
+  -> Either Int Row
+  -> Either Int Row
+padVert = undefined
+{-
 padVert :: Background -> Align Horiz -> Cols -> Row -> Row
 padVert bk a (Cols tgt) rw@(Row cs) = Row . concat $ [lft, cs, rght]
   where
@@ -315,7 +340,7 @@ padVert bk a (Cols tgt) rw@(Row cs) = Row . concat $ [lft, cs, rght]
     mkPad n
       | n == 0 = []
       | otherwise = [blanks bk (Cols n)]
-        
+-}
 
 -- | Merge several horizontal Rows into one set of horizontal 'Row'.
 -- That is:
@@ -333,10 +358,14 @@ padVert bk a (Cols tgt) rw@(Row cs) = Row . concat $ [lft, cs, rght]
 -- Strange behavior will result if each input list is not exactly
 -- the same length.
 
+{-
 mergeHoriz :: [[Row]] -> [Row]
 mergeHoriz = foldr (zipWith merge) (repeat (Row []))
   where
     merge (Row r1) (Row r2) = Row $ r1 ++ r2
+-}
+mergeHoriz :: [BoxP] -> BoxP
+mergeHoriz = undefined
 
 -- # Viewing
 
@@ -362,6 +391,8 @@ view
   -> Align Vert
   -> Box
   -> Box
+view = undefined
+{-
 view r c ah av (Box inRows) = Box . map htrim . vtrim $ inRows
   where
     vtrim = case av of
@@ -385,6 +416,7 @@ view r c ah av (Box inRows) = Box . map htrim . vtrim $ inRows
           nDrop = Cols trimL
       where
         extra = (unCols . cols $ rw) - unCols c
+-}
 
 dropChars :: Cols -> Row -> Row
 dropChars colsIn = Row . go (unCols colsIn) . unRow
