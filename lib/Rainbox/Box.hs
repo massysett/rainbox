@@ -143,17 +143,17 @@ newtype Width = Width { unWidth :: Int }
 -- wide.  Every 'Row' in a 'Box' always has the same number of
 -- columns.
 class HasWidth a where
-  cols :: a -> Width
+  width :: a -> Width
 
 instance HasWidth Row where
-  cols = Width . sum . map (X.length . text) . unRow
+  width = Width . sum . map (X.length . text) . unRow
 
 instance HasWidth Box where
-  cols b = case unBox b of
+  width b = case unBox b of
     NoHeight i -> Width i
     WithHeight rs -> case rs of
       [] -> error "cols: error"
-      x:_ -> cols x
+      x:_ -> width x
 
 -- # Making Boxes
 
@@ -265,7 +265,7 @@ catV bk al bs
   | otherwise = Box . foldr f (NoHeight (unWidth w))
       . concat . map (flatten . unBox) $ bs
   where
-    w = F.maximum . (Width 0:) . map cols $ bs
+    w = F.maximum . (Width 0:) . map width $ bs
     f ei bp = case padVert bk al w ei of
       Left nh -> case bp of
         NoHeight wOld -> NoHeight (max (unWidth w) wOld)
@@ -293,23 +293,26 @@ catV bk al bs
 -- where dashes is a 'Row' with data, and dots is a blank 'Row'.
 
 padHoriz :: Background -> Align Vert -> Height -> BoxP -> BoxP
-padHoriz = undefined
---padHoriz :: Background -> Align Vert -> Height -> [Row] -> [Row]
-{-
-padHoriz bk a (Height tgt) rs = concat [tp, rs, bot]
+padHoriz bk a hght bp = case bp of
+  NoHeight w
+    | h == 0 -> NoHeight w
+    | otherwise -> WithHeight . map (Row . (:[])) . replicate h
+        $ blanks bk (Width w)
+  WithHeight rs -> WithHeight $ concat [tp, rs, bot]
+    where
+      nPad = max 0 $ h - length rs
+      (nATop, nBot) = case a of
+        Center -> split nPad
+        NonCenter ATop -> (0, nPad)
+        NonCenter ABottom -> (nPad, 0)
+      pad = Row [blanks bk len]
+        where
+          len = case rs of
+            [] -> Width 0
+            x:_ -> width x
+      (tp, bot) = (replicate nATop pad, replicate nBot pad)
   where
-    nPad = max 0 $ tgt - length rs
-    (nATop, nBot) = case a of
-      Center -> split nPad
-      NonCenter ATop -> (0, nPad)
-      NonCenter ABottom -> (nPad, 0)
-    pad = Row [blanks bk len]
-      where
-        len = case rs of
-          [] -> Width 0
-          x:_ -> cols x
-    (tp, bot) = (replicate nATop pad, replicate nBot pad)
--}
+    h = max 0 (unHeight hght)
 
 -- | Given the resulting width, pad a 'Row'.  So, when given
 -- a width of 10 and an alignment of 'right',
@@ -326,20 +329,25 @@ padVert
   -> Width
   -> Either Int Row
   -> Either Int Row
-padVert = undefined
+padVert bk a wdth ei = case ei of
+  Left rw -> Left w
+  Right rw@(Row cs) -> Right . Row . concat $ [lft, cs, rght]
+    where
+      nPad = max 0 $ w - (unWidth . width $ rw)
+      (nLeft, nRight) = case a of
+        Center -> split nPad
+        NonCenter ALeft -> (0, nPad)
+        NonCenter ARight -> (nPad, 0)
+      (lft, rght) = (mkPad nLeft, mkPad nRight)
+      mkPad n
+        | n == 0 = []
+        | otherwise = [blanks bk (Width n)]
+  where
+    w = max 0 $ unWidth wdth
 {-
 padVert :: Background -> Align Horiz -> Width -> Row -> Row
 padVert bk a (Width tgt) rw@(Row cs) = Row . concat $ [lft, cs, rght]
   where
-    nPad = max 0 $ tgt - (unWidth . cols $ rw)
-    (nLeft, nRight) = case a of
-      Center -> split nPad
-      NonCenter ALeft -> (0, nPad)
-      NonCenter ARight -> (nPad, 0)
-    (lft, rght) = (mkPad nLeft, mkPad nRight)
-    mkPad n
-      | n == 0 = []
-      | otherwise = [blanks bk (Width n)]
 -}
 
 -- | Merge several horizontal Height into one set of horizontal 'Row'.
