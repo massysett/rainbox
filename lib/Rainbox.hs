@@ -11,7 +11,7 @@ module Rainbox
 
   -- * Height and columns
   , Height(..)
-  , B.rows
+  , B.height
   , Width(..)
   , B.HasWidth(..)
 
@@ -41,9 +41,9 @@ module Rainbox
   , punctuateV
 
   -- * Viewing Boxes
-  , B.view
-  , viewH
-  , viewV
+  , view
+  , B.viewH
+  , B.viewV
 
   -- * Growing Boxes
   , grow
@@ -60,6 +60,7 @@ module Rainbox
   , printBox
   ) where
 
+import Data.List (intersperse)
 import System.Console.Rainbow
 import qualified Rainbox.Box as B
 import Rainbox.Box
@@ -67,8 +68,8 @@ import Rainbox.Box
   , Align
   , Horiz
   , Vert
-  , Height
-  , Width
+  , Height(..)
+  , Width(..)
   , Background
   , unRow
   , unBox
@@ -79,13 +80,13 @@ import qualified System.IO as IO
 -- # Box making
 --
 
--- | A blank horizontal box with a given length.
+-- | A blank horizontal box with a given width and no height.
 blankH :: Background -> Int -> Box
-blankH = undefined
+blankH bk i = B.blank bk (Height 0) (Width i)
 
 -- | A blank vertical box with a given length.
 blankV :: Background -> Int -> Box
-blankV = undefined
+blankV bk i = B.blank bk (Height i) (Width 0)
 
 -- | A Box made of a single 'Chunk'.
 chunk :: Chunk -> Box
@@ -106,7 +107,9 @@ grow
   -> Align Vert
   -> Box
   -> Box
-grow = undefined
+grow bk (B.Height h) (B.Width w) ah av
+  = growH bk w ah
+  . growV bk h av
 
 -- | Grow a 'Box' horizontally.
 
@@ -117,7 +120,16 @@ growH
   -> Align Horiz
   -> Box
   -> Box
-growH = undefined
+growH bk tgtW a b
+  | tgtW < w = b
+  | otherwise = B.catH bk B.top [lft, b, rt]
+  where
+    w = unWidth . B.width $ b
+    (lft, rt) = (blankH bk wl, blankH bk wr)
+    (wl, wr)
+      | a == B.center = B.split w
+      | a == B.left = (0, w)
+      | otherwise = (w, 0)
 
 -- | Grow a 'Box' vertically.
 growV
@@ -127,25 +139,27 @@ growV
   -> Align Vert
   -> Box
   -> Box
-growV = undefined
+growV bk tgtH a b
+  | tgtH < h = b
+  | otherwise = B.catV bk B.left [tp, b, bt]
+  where
+    h = unHeight . B.height $ b
+    (tp, bt) = (blankV bk ht, blankV bk hb)
+    (ht, hb)
+      | a == B.center = B.split h
+      | a == B.top = (0, h)
+      | otherwise = (h, 0)
 
--- | View a 'Box', trimming it horizontally.
-viewH
-  :: Int
-  -- ^ Resulting width
+view
+  :: Height
+  -> Width
+  -> Align Vert
   -> Align Horiz
   -> Box
   -> Box
-viewH = undefined
-
--- | View a 'Box', trimming it vertically.
-viewV
-  :: Int
-  -- ^ Resulting height
-  -> Align Horiz
-  -> Box
-  -> Box
-viewV = undefined
+view h w av ah
+  = B.viewH w ah
+  . B.viewV h av
 
 --
 -- # Resizing
@@ -163,7 +177,9 @@ resize
   -> Align Vert
   -> Box
   -> Box
-resize = undefined
+resize bk h w ah av
+  = resizeH bk (unWidth w) ah
+  . resizeV bk (unHeight h) av
 
 -- | Resize horizontally.
 resizeH
@@ -192,21 +208,25 @@ resizeV = undefined
 -- | @sepH sep a bs@ lays out @bs@ horizontally with alignment @a@,
 --   with @sep@ amount of space in between each.
 sepH :: Background -> Int -> Align Vert -> [Box] -> Box
-sepH bk sep a bs = undefined
+sepH bk sep a = punctuateH bk a bl
+  where
+    bl = blankH bk sep
 
 -- | @sepV sep a bs@ lays out @bs@ vertically with alignment @a@,
 --   with @sep@ amount of space in between each.
 sepV :: Background -> Int -> Align Horiz -> [Box] -> Box
-sepV sep b a bs = undefined
+sepV bk sep a = punctuateV bk a bl
+  where
+    bl = blankV bk sep
 
 -- | @punctuateH a p bs@ horizontally lays out the boxes @bs@ with a
 --   copy of @p@ interspersed between each.
 punctuateH :: Background -> Align Vert -> Box -> [Box] -> Box
-punctuateH b a p bs = undefined
+punctuateH bk a sep = B.catH bk a . intersperse sep
 
 -- | A vertical version of 'punctuateH'.
 punctuateV :: Background -> Align Horiz -> Box -> [Box] -> Box
-punctuateV b a p bs = undefined
+punctuateV bk a sep = B.catV bk a . intersperse sep
 
 render :: Box -> [Chunk]
 render bx = case unBox bx of

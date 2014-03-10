@@ -17,7 +17,7 @@ module Rainbox.Reader
 
   -- * Height and columns
   , B.Height(..)
-  , B.rows
+  , B.height
   , B.Width(..)
   , B.HasWidth(..)
 

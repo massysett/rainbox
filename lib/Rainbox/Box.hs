@@ -1,7 +1,7 @@
 -- | Box primitives.
 --
 -- This module provides all functions that have access to the
--- internals of a 'Box'.  There are only five functions that make a
+-- internals of a 'Box'.  There are only six functions that make a
 -- 'Box':
 --
 -- * 'blank' - formats a blank box with nothing but a (possibly)
@@ -14,7 +14,11 @@
 --
 -- * 'catV' - paste 'Box' together vertically
 --
--- * 'view' - take a portion of an already-existing 'Box'.
+-- * 'viewH' - view a 'Box', keeping the same height but possibly
+-- trimming the width
+--
+-- * 'viewV' - view a 'Box', keeping the same width but possibly
+-- trimming the height
 --
 -- There are many crude diagrams in the Haddock documentation.  A
 -- dash means a character with data; a period means a blank
@@ -33,7 +37,7 @@ module Rainbox.Box
 
   -- * Height and Width
   , Height(..)
-  , rows
+  , height
   , Width(..)
   , HasWidth(..)
 
@@ -52,7 +56,11 @@ module Rainbox.Box
   , chunks
   , catH
   , catV
-  , view
+  , viewH
+  , viewV
+
+  -- * Helpers
+  , split
 
   ) where
 
@@ -130,8 +138,8 @@ newtype Height = Height { unHeight :: Int }
   deriving (Eq, Ord, Show)
 
 -- | How many 'Row' are in this 'Box'?
-rows :: Box -> Height
-rows b = case unBox b of
+height :: Box -> Height
+height b = case unBox b of
   NoHeight _ -> Height 0
   WithHeight rs -> Height . length $ rs
 
@@ -167,7 +175,8 @@ blank bk r c
   | unHeight r < 1 = Box $ NoHeight (max 0 (unWidth c))
   | otherwise = Box . WithHeight $ replicate (unHeight r) row
   where
-    row = Row $ [ blanks bk c ]
+    row | unWidth c < 1 = Row []
+        | otherwise = Row $ [ blanks bk c ]
 
 -- | A 'Box' made of 'Chunk'.  Always one Row tall, and has as many
 -- columns as there are characters in the 'Chunk'.
@@ -223,10 +232,12 @@ right = NonCenter ARight
 catH :: Background -> Align Vert -> [Box] -> Box
 catH bk al bs
   | null bs = Box $ NoHeight 0
-  | otherwise = Box . mergeHoriz . map (pad . unBox) $ bs
+  | hght == Height 0 = Box . NoHeight . unWidth . maximum
+      . map width $ bs
+  | otherwise = Box . WithHeight . mergeHoriz . map (pad . unBox) $ bs
   where
-    pad = padHoriz bk al height
-    height = F.maximum . (Height 0:) . map rows $ bs
+    pad = padHoriz bk al hght
+    hght = F.maximum . (Height 0:) . map height $ bs
 
 -- | Merge several Box vertically into one Box.  That is, with
 -- alignment set to 'left':
@@ -266,16 +277,16 @@ catV bk al bs
       . concat . map (flatten . unBox) $ bs
   where
     w = F.maximum . (Width 0:) . map width $ bs
-    f ei bp = case padVert bk al w ei of
-      Left nh -> case bp of
-        NoHeight wOld -> NoHeight (max (unWidth w) wOld)
-        x -> x
-      Right wh -> case bp of
-        WithHeight rw -> WithHeight $ wh : rw
-        _ -> WithHeight [wh]
+    f mayR bp = case mayR of
+      Nothing -> bp
+      Just rw -> case bp of
+        WithHeight wh -> WithHeight $ padded : wh
+        _ -> WithHeight [padded]
+        where
+          padded = padVert bk al w rw
     flatten bp = case bp of
-      NoHeight i -> [Left i]
-      WithHeight rs -> map Right rs
+      NoHeight _ -> [Nothing]
+      WithHeight rs -> map Just rs
 
 
 -- | Given the resulting height, pad a list of Height.  So, when given
@@ -292,13 +303,10 @@ catV bk al bs
 --
 -- where dashes is a 'Row' with data, and dots is a blank 'Row'.
 
-padHoriz :: Background -> Align Vert -> Height -> BoxP -> BoxP
+padHoriz :: Background -> Align Vert -> Height -> BoxP -> [Row]
 padHoriz bk a hght bp = case bp of
-  NoHeight w
-    | h == 0 -> NoHeight w
-    | otherwise -> WithHeight . map (Row . (:[])) . replicate h
-        $ blanks bk (Width w)
-  WithHeight rs -> WithHeight $ concat [tp, rs, bot]
+  NoHeight w -> map (Row . (:[])) . replicate h $ blanks bk (Width w)
+  WithHeight rs -> concat [tp, rs, bot]
     where
       nPad = max 0 $ h - length rs
       (nATop, nBot) = case a of
@@ -327,28 +335,21 @@ padVert
   :: Background
   -> Align Horiz
   -> Width
-  -> Either Int Row
-  -> Either Int Row
-padVert bk a wdth ei = case ei of
-  Left rw -> Left w
-  Right rw@(Row cs) -> Right . Row . concat $ [lft, cs, rght]
-    where
-      nPad = max 0 $ w - (unWidth . width $ rw)
-      (nLeft, nRight) = case a of
-        Center -> split nPad
-        NonCenter ALeft -> (0, nPad)
-        NonCenter ARight -> (nPad, 0)
-      (lft, rght) = (mkPad nLeft, mkPad nRight)
-      mkPad n
-        | n == 0 = []
-        | otherwise = [blanks bk (Width n)]
+  -> Row
+  -> Row
+padVert bk a wdth rw@(Row cs) = Row . concat $ [lft, cs, rght]
   where
+    nPad = max 0 $ w - (unWidth . width $ rw)
+    (nLeft, nRight) = case a of
+      Center -> split nPad
+      NonCenter ALeft -> (0, nPad)
+      NonCenter ARight -> (nPad, 0)
+    (lft, rght) = (mkPad nLeft, mkPad nRight)
+    mkPad n
+      | n == 0 = []
+      | otherwise = [blanks bk (Width n)]
     w = max 0 $ unWidth wdth
-{-
-padVert :: Background -> Align Horiz -> Width -> Row -> Row
-padVert bk a (Width tgt) rw@(Row cs) = Row . concat $ [lft, cs, rght]
-  where
--}
+
 
 -- | Merge several horizontal Height into one set of horizontal 'Row'.
 -- That is:
@@ -366,14 +367,10 @@ padVert bk a (Width tgt) rw@(Row cs) = Row . concat $ [lft, cs, rght]
 -- Strange behavior will result if each input list is not exactly
 -- the same length.
 
-{-
 mergeHoriz :: [[Row]] -> [Row]
 mergeHoriz = foldr (zipWith merge) (repeat (Row []))
   where
     merge (Row r1) (Row r2) = Row $ r1 ++ r2
--}
-mergeHoriz :: [BoxP] -> BoxP
-mergeHoriz = undefined
 
 -- # Viewing
 
@@ -392,42 +389,45 @@ mergeHoriz = undefined
 -- >>> printBox . view (Height 1) (Width 1) right bottom $ box
 -- d
 
-view
-  :: Height
-  -> Width
-  -> Align Horiz
-  -> Align Vert
-  -> Box
-  -> Box
-view = undefined
-{-
-view r c ah av (Box inHeight) = Box . map htrim . vtrim $ inHeight
+viewV :: Height -> Align Vert -> Box -> Box
+viewV hght a (Box b) = Box $ case b of
+  WithHeight rs
+    | h == 0 -> NoHeight . unWidth . width . head $ rs
+    | otherwise -> WithHeight $ case a of
+        NonCenter ATop -> take h rs
+        NonCenter ABottom -> drop extra rs
+        Center -> drop nDrop . take nTake $ rs
+          where
+            (trimL, trimR) = split extra
+            nTake = length rs - trimR
+            nDrop = trimL
+        where
+          extra = max 0 $ length rs - h
+  x -> x
   where
-    vtrim = case av of
-      NonCenter ATop -> take . unHeight $ r
-      NonCenter ABottom -> drop extra
-      Center -> drop nDrop . take nTake
-        where
-          (trimL, trimR) = split extra
-          nTake = length inHeight - trimR
-          nDrop = trimL
-      where
-        extra = length inHeight - unHeight r
+    h = max 0 $ unHeight hght
 
-    htrim rw = case ah of
-      NonCenter ALeft -> takeChars c rw
-      NonCenter ARight -> dropChars (Width extra) rw
-      Center -> dropChars nDrop . takeChars nTake $ rw
+viewH :: Width -> Align Horiz -> Box -> Box
+viewH wdth a (Box b) = Box $ case b of
+  NoHeight nh -> NoHeight (min w nh)
+  WithHeight rs -> WithHeight $ map f rs
+    where
+      f rw = case a of
+        NonCenter ALeft -> takeChars w rw
+        NonCenter ARight -> dropChars extra rw
+        Center -> dropChars nDrop . takeChars nTake $ rw
+          where
+            (trimL, trimR) = split extra
+            nTake = max 0 $ (unWidth . width $ rw) - trimR
+            nDrop = trimL
         where
-          (trimL, trimR) = split extra
-          nTake = Width $ (unWidth . cols $ rw) - trimR
-          nDrop = Width trimL
-      where
-        extra = (unWidth . cols $ rw) - unWidth c
--}
+          extra = max 0 $ (unWidth . width $ rw) - w
+  where
+    w = max 0 (unWidth wdth)
 
-dropChars :: Width -> Row -> Row
-dropChars colsIn = Row . go (unWidth colsIn) . unRow
+
+dropChars :: Int -> Row -> Row
+dropChars colsIn = Row . go colsIn . unRow
   where
     go n cs
       | n <= 0 = cs
@@ -440,8 +440,8 @@ dropChars colsIn = Row . go (unWidth colsIn) . unRow
              lenX = X.length . text $ x
              x' = x { text = X.drop n . text $ x }
 
-takeChars :: Width -> Row -> Row
-takeChars colsIn = Row . go (unWidth colsIn) . unRow
+takeChars :: Int -> Row -> Row
+takeChars colsIn = Row . go colsIn . unRow
   where
     go n cs
       | n <= 0 = []
