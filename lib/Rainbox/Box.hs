@@ -260,7 +260,7 @@ catH bk al bs
 -- > ----...
 -- > ----...
 --
--- > With alignment set to 'right', becomes
+-- With alignment set to 'right', becomes
 --
 -- > -------
 -- > -------
