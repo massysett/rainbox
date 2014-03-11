@@ -49,6 +49,7 @@ module Rainbox
   , grow
   , growH
   , growV
+  , column
 
   -- * Resizing
   , resize
@@ -124,7 +125,7 @@ growH bk tgtW a b
   | tgtW < w = b
   | otherwise = B.catH bk B.top [lft, b, rt]
   where
-    w = unWidth . B.width $ b
+    w = B.width b
     (lft, rt) = (blankH bk wl, blankH bk wr)
     (wl, wr)
       | a == B.center = B.split w
@@ -143,12 +144,23 @@ growV bk tgtH a b
   | tgtH < h = b
   | otherwise = B.catV bk B.left [tp, b, bt]
   where
-    h = unHeight . B.height $ b
+    h = B.height b
     (tp, bt) = (blankV bk ht, blankV bk hb)
     (ht, hb)
       | a == B.center = B.split h
       | a == B.top = (0, h)
       | otherwise = (h, 0)
+
+-- | Returns a list of 'Box', each being exactly as wide as the
+-- widest 'Box' in the input list.
+column
+  :: Background
+  -> Align Horiz
+  -> [Box]
+  -> [Box]
+column bk ah bs = map (growH bk w ah) bs
+  where
+    w = maximum . (0:) . map B.width $ bs
 
 view
   :: Height
@@ -194,7 +206,7 @@ resizeH bk w a b
   | bw > w = B.viewH w a b
   | otherwise = b
   where
-    bw = B.unWidth . B.width $ b
+    bw = B.width b
 
 -- | Resize vertically.
 resizeV
@@ -209,7 +221,7 @@ resizeV bk h a b
   | bh > h = B.viewV h a b
   | otherwise = b
   where
-    bh = B.unHeight . B.height $ b
+    bh = B.height b
 
 --
 -- # Glueing

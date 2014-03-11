@@ -63,6 +63,7 @@ module Rainbox.Reader
   , grow
   , growH
   , growV
+  , column
 
   -- * Resizing
   , resize
@@ -139,6 +140,12 @@ growV i bx = do
   b <- asks background
   v <- asks alignV
   return $ R.growV b i v bx
+
+column :: Monad m => [Box] -> Env m [Box]
+column bs = do
+  bk <- asks background
+  ah <- asks alignH
+  return $ R.column bk ah bs
 
 resize
   :: Monad m => Height
