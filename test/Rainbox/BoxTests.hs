@@ -68,6 +68,7 @@ data Inputs = Inputs
   , iHoriz :: Align Horiz
   , iBoxes :: [Box]
   , iBox :: Box
+  , iChunk :: Chunk
   } deriving Show
 
 instance Arbitrary Inputs where
@@ -80,6 +81,7 @@ instance Arbitrary Inputs where
     <*> genAlignHoriz
     <*> listOf genBox
     <*> genBox
+    <*> genChunk
 
 tests :: TestTree
 tests = testGroup "BoxTests"
@@ -154,6 +156,20 @@ tests = testGroup "BoxTests"
     , testProperty "number of columns <= number requested" $ \i ->
       let c = unWidth . iWidth $ i
       in (<= c) . width $ viewH c (iHoriz i) (iBox i)
+    ]
+
+  , testGroup "viewV"
+    [ testProperty "makes a valid Box" $ \i ->
+      validBox $ viewV (unHeight . iHeight $ i) (iVert i) (iBox i)
+
+    , testProperty "width does not change" $ \i ->
+      let b = iBox i
+      in (== width b) . width $ viewV (unHeight . iHeight $ i)
+                                    (iVert i) b
+
+    , testProperty "number of rows <= number requested" $ \i ->
+      let r = unHeight . iHeight $ i
+      in (<= r) . height $ viewV r (iVert i) (iBox i)
     ]
   ]
 
