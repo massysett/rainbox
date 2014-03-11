@@ -155,7 +155,8 @@ tests = testGroup "BoxTests"
 
     , testProperty "number of columns <= number requested" $ \i ->
       let c = unWidth . iWidth $ i
-      in (<= c) . width $ viewH c (iHoriz i) (iBox i)
+          tgt = max 0 c
+      in (<= tgt) . width $ viewH c (iHoriz i) (iBox i)
     ]
 
   , testGroup "viewV"
