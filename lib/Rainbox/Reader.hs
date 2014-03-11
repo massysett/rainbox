@@ -206,23 +206,33 @@ punctuateV bx bxs = do
   return $ R.punctuateV b h bx bxs
 
 view
-  :: Monad m => Height
+  :: Monad m
+  => Height
   -> Width
   -> Box
   -> Env m Box
-view = undefined
+view h w b = do
+  av <- asks alignV
+  ah <- asks alignH
+  return $ R.view h w av ah b
 
 viewH
-  :: Monad m => Int
+  :: Monad m
+  => Int
   -> Box
   -> Env m Box
-viewH = undefined
+viewH h b = do
+  ah <- asks alignH
+  return $ B.viewH h ah b
 
 viewV
-  :: Monad m => Int
+  :: Monad m
+  => Int
   -> Box
   -> Env m Box
-viewV = undefined
+viewV h b = do
+  av <- asks alignV
+  return $ B.viewV h av b
 
 -- | Paste two 'Box' together horizontally with no intervening
 -- space.  Left fixity, precedence 5.

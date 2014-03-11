@@ -389,7 +389,7 @@ mergeHoriz = foldr (zipWith merge) (repeat (Row []))
 -- >>> printBox . view (Height 1) (Width 1) right bottom $ box
 -- d
 
-viewV :: Height -> Align Vert -> Box -> Box
+viewV :: Int -> Align Vert -> Box -> Box
 viewV hght a (Box b) = Box $ case b of
   WithHeight rs
     | h == 0 -> NoHeight . unWidth . width . head $ rs
@@ -405,9 +405,9 @@ viewV hght a (Box b) = Box $ case b of
           extra = max 0 $ length rs - h
   x -> x
   where
-    h = max 0 $ unHeight hght
+    h = max 0 hght
 
-viewH :: Width -> Align Horiz -> Box -> Box
+viewH :: Int -> Align Horiz -> Box -> Box
 viewH wdth a (Box b) = Box $ case b of
   NoHeight nh -> NoHeight (min w nh)
   WithHeight rs -> WithHeight $ map f rs
@@ -423,7 +423,7 @@ viewH wdth a (Box b) = Box $ case b of
         where
           extra = max 0 $ (unWidth . width $ rw) - w
   where
-    w = max 0 (unWidth wdth)
+    w = max 0 wdth
 
 
 dropChars :: Int -> Row -> Row

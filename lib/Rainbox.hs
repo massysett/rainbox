@@ -158,8 +158,8 @@ view
   -> Box
   -> Box
 view h w av ah
-  = B.viewH w ah
-  . B.viewV h av
+  = B.viewH (B.unWidth w) ah
+  . B.viewV (B.unHeight h) av
 
 --
 -- # Resizing
@@ -189,7 +189,12 @@ resizeH
   -> Align Horiz
   -> Box
   -> Box
-resizeH = undefined
+resizeH bk w a b
+  | bw < w = growH bk w a b
+  | bw > w = B.viewH w a b
+  | otherwise = b
+  where
+    bw = B.unWidth . B.width $ b
 
 -- | Resize vertically.
 resizeV
@@ -199,7 +204,12 @@ resizeV
   -> Align Vert
   -> Box
   -> Box
-resizeV = undefined
+resizeV bk h a b
+  | bh < h = growV bk h a b
+  | bh > h = B.viewV h a b
+  | otherwise = b
+  where
+    bh = B.unHeight . B.height $ b
 
 --
 -- # Glueing
