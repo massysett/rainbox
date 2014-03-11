@@ -126,7 +126,7 @@ grow r c bx = do
   b <- asks background
   h <- asks alignH
   v <- asks alignV
-  return $ R.grow b r c h v bx
+  return $ R.grow b r c v h bx
 
 growH :: Monad m => Int -> Box -> Env m Box
 growH i bx = do

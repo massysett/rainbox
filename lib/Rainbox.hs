@@ -103,11 +103,11 @@ grow
   :: Background
   -> Height
   -> Width
-  -> Align Horiz
   -> Align Vert
+  -> Align Horiz
   -> Box
   -> Box
-grow bk (B.Height h) (B.Width w) ah av
+grow bk (B.Height h) (B.Width w) av ah
   = growH bk w ah
   . growV bk h av
 
