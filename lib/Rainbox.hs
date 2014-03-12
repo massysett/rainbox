@@ -126,11 +126,12 @@ growH bk tgtW a b
   | otherwise = B.catH bk B.top [lft, b, rt]
   where
     w = B.width b
+    diff = tgtW - w
     (lft, rt) = (blankH bk wl, blankH bk wr)
     (wl, wr)
-      | a == B.center = B.split w
-      | a == B.left = (0, w)
-      | otherwise = (w, 0)
+      | a == B.center = B.split diff
+      | a == B.left = (0, diff)
+      | otherwise = (diff, 0)
 
 -- | Grow a 'Box' vertically.
 growV
@@ -145,11 +146,12 @@ growV bk tgtH a b
   | otherwise = B.catV bk B.left [tp, b, bt]
   where
     h = B.height b
+    diff = tgtH - h
     (tp, bt) = (blankV bk ht, blankV bk hb)
     (ht, hb)
-      | a == B.center = B.split h
-      | a == B.top = (0, h)
-      | otherwise = (h, 0)
+      | a == B.center = B.split diff
+      | a == B.top = (0, diff)
+      | otherwise = (diff, 0)
 
 -- | Returns a list of 'Box', each being exactly as wide as the
 -- widest 'Box' in the input list.

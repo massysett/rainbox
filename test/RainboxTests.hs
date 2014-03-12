@@ -3,11 +3,8 @@ module RainboxTests where
 import Rainbox
 import Rainbox.BoxTests
 import qualified Data.Text as X
-import Control.Applicative
-import Control.Monad
 import Test.Tasty.QuickCheck (testProperty)
 import Test.Tasty
-import Test.QuickCheck
 import System.Console.Rainbow
 
 tests :: TestTree
@@ -18,7 +15,8 @@ tests = testGroup "RainboxTests"
 
     , testProperty "makes Box with correct width" $ \i ->
       let w = unWidth . iWidth $ i
-      in (== w) . width $ blankH (iBackground i) w
+          tgt = max 0 w
+      in (== tgt) . width $ blankH (iBackground i) w
     ]
 
   , testGroup "blankV"
@@ -27,7 +25,8 @@ tests = testGroup "RainboxTests"
 
     , testProperty "makes Box with correct height" $ \i ->
       let h = unHeight . iHeight $ i
-      in (== h) . height $ blankV (iBackground i) h
+          tgt = max 0 h
+      in (== tgt) . height $ blankV (iBackground i) h
     ]
 
   , testGroup "chunk"
@@ -47,9 +46,10 @@ tests = testGroup "RainboxTests"
 
     , testProperty "new Box is of correct width" $ \i ->
       let bx = iBox i
-          tgt = unWidth . iWidth $ i
-      in (\w -> w == width bx || w == tgt) . width $
-            growH (iBackground i) tgt (iHoriz i) bx
+          tgt = max wdth (width bx)
+          wdth = unWidth . iWidth $ i
+      in (== tgt) . width $
+            growH (iBackground i) wdth (iHoriz i) bx
 
     , testProperty "new Box is at least as wide as old Box" $ \i ->
       let bx = iBox i
@@ -65,9 +65,10 @@ tests = testGroup "RainboxTests"
 
     , testProperty "new Box is of correct height" $ \i ->
       let bx = iBox i
-          tgt = unHeight . iHeight $ i
-      in (\h -> h == height bx || h == tgt) . height $
-            growV (iBackground i) tgt (iVert i) bx
+          tgt = max (height bx) hght
+          hght = unHeight . iHeight $ i
+      in (== tgt) . height $
+            growV (iBackground i) hght (iVert i) bx
 
     , testProperty "new Box is at least as tall as old Box" $ \i ->
       let bx = iBox i

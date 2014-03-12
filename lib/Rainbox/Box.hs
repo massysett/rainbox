@@ -232,7 +232,7 @@ right = NonCenter ARight
 catH :: Background -> Align Vert -> [Box] -> Box
 catH bk al bs
   | null bs = Box $ NoHeight 0
-  | hght == 0 = Box . NoHeight . maximum . map width $ bs
+  | hght == 0 = Box . NoHeight . sum . map width $ bs
   | otherwise = Box . WithHeight . mergeHoriz . map (pad . unBox) $ bs
   where
     pad = padHoriz bk al hght

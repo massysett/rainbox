@@ -170,7 +170,8 @@ tests = testGroup "BoxTests"
 
     , testProperty "number of rows <= number requested" $ \i ->
       let r = unHeight . iHeight $ i
-      in (<= r) . height $ viewV r (iVert i) (iBox i)
+          tgt = max 0 r
+      in (<= tgt) . height $ viewV r (iVert i) (iBox i)
     ]
   ]
 
