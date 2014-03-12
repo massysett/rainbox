@@ -52,3 +52,4 @@ Test-Suite rainbox-test
   other-modules:
       RainboxDir
     , Rainbox.BoxTests
+    , Rainbox.ReaderTests

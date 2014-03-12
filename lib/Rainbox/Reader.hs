@@ -34,6 +34,7 @@ module Rainbox.Reader
   -- * Reader monad
   , Specs(..)
   , Env
+  , runEnv
 
   -- * Making Boxes
   , B.blank
@@ -77,6 +78,7 @@ module Rainbox.Reader
 
 
 import Control.Monad.Trans.Reader
+import Data.Functor.Identity
 import qualified Rainbox.Box as B
 import qualified Rainbox as R
 import Rainbox.Box
@@ -99,6 +101,9 @@ data Specs = Specs
   } deriving (Eq, Show)
 
 type Env = ReaderT Specs
+
+runEnv :: Specs -> Env Identity a -> a
+runEnv s = runIdentity . ($ s) . runReaderT
 
 blankH :: Monad m => Int -> Env m Box
 blankH i = do
