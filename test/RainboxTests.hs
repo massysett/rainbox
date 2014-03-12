@@ -6,6 +6,11 @@ import qualified Data.Text as X
 import Test.Tasty.QuickCheck (testProperty)
 import Test.Tasty
 import System.Console.Rainbow
+import Test.QuickCheck hiding (maxSize, resize)
+import qualified Test.QuickCheck as Q
+
+maxSize :: Int -> Q.Gen a -> Q.Gen a
+maxSize s g = Q.sized $ \i -> Q.resize (min s i) g
 
 tests :: TestTree
 tests = testGroup "RainboxTests"
@@ -178,14 +183,31 @@ tests = testGroup "RainboxTests"
           (iHoriz i) bx bs
     ]
 
-  -- test punctuate functions first
-
+  -- Have to cap size on this one, which is not satisfying.  There
+  -- are no apparent bugs.  Apparently what is taking so long is the
+  -- Text.replicate in Box.blanks, which is applied from
+  -- Box.padHoriz.
   , testGroup "sepH"
-    [ testProperty "result has correct width" $ \i len ->
+    [ testProperty "result has correct width" $
+      maxSize 50 $
+      forAll arbitrarySizedIntegral $ \len ->
+      forAll arbitrary $ \i ->
       let tgt = (sum . map width $ bs)
             + max 0 len * max 0 (length bs - 1)
           bs = iBoxes i
       in (== tgt) . width $ sepH (iBackground i) len
           (iVert i) (iBoxes i)
+    ]
+
+  , testGroup "sepV"
+    [ testProperty "result has correct height" $
+      maxSize 50 $
+      forAll arbitrarySizedIntegral $ \len ->
+      forAll arbitrary $ \i ->
+      let tgt = (sum . map height $ bs)
+            + max 0 len * max 0 (length bs - 1)
+          bs = iBoxes i
+      in (== tgt) . height $ sepV (iBackground i) len
+          (iHoriz i) (iBoxes i)
     ]
   ]
