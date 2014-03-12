@@ -156,6 +156,28 @@ tests = testGroup "RainboxTests"
             (iBox i)
     ]
 
+  , testGroup "punctuateH"
+    [ testProperty "result has desired width" $ \i ->
+      let tgt = (sum . map width $ bs)
+            + width bx * (max 0 $ len - 1)
+          len = length bs
+          bs = iBoxes i
+          bx = iBox i
+      in (== tgt) . width $ punctuateH (iBackground i)
+          (iVert i) bx bs
+    ]
+
+  , testGroup "punctuateV"
+    [ testProperty "result has desired height" $ \i ->
+      let tgt = (sum . map height $ bs)
+            + height bx * (max 0 $ len - 1)
+          len = length bs
+          bs = iBoxes i
+          bx = iBox i
+      in (== tgt) . height $ punctuateV (iBackground i)
+          (iHoriz i) bx bs
+    ]
+
   -- test punctuate functions first
 
   , testGroup "sepH"
