@@ -156,6 +156,8 @@ tests = testGroup "RainboxTests"
             (iBox i)
     ]
 
+  -- test punctuate functions first
+
   , testGroup "sepH"
     [ testProperty "result has correct width" $ \i len ->
       let tgt = (sum . map width $ bs)
