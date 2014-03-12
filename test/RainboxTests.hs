@@ -117,4 +117,51 @@ tests = testGroup "RainboxTests"
         [] -> null r
         xs -> width (head r) == (maximum . map width $ xs)
     ]
+
+  , testGroup "resizeH"
+    [ testProperty "height of resulting Box unchanged" $ \i ->
+      let bx = iBox i
+      in (== height bx) . height $ resizeH (iBackground i)
+            (unWidth . iWidth $ i) (iHoriz i) bx
+
+    , testProperty "result has desired width" $ \i ->
+      let tgt = max 0 . unWidth . iWidth $ i
+      in (== tgt) . width $ resizeH (iBackground i)
+            (unWidth . iWidth $ i) (iHoriz i) (iBox i)
+    ]
+
+  , testGroup "resizeV"
+    [ testProperty "width of resulting Box unchanged" $ \i ->
+      let bx = iBox i
+      in (== width bx) . width $ resizeV (iBackground i)
+            (unHeight . iHeight $ i) (iVert i) bx
+
+    , testProperty "result has desired height" $ \i ->
+      let tgt = max 0 . unHeight . iHeight $ i
+      in (== tgt) . height $ resizeV (iBackground i)
+            (unHeight . iHeight $ i) (iVert i) (iBox i)
+    ]
+
+  , testGroup "resize"
+    [ testProperty "result has desired height" $ \i ->
+      let tgt = max 0 . unHeight . iHeight $ i
+      in (== tgt) . height $ resize (iBackground i)
+            (iHeight i) (iWidth i)
+            (iHoriz i) (iVert i) (iBox i)
+
+    , testProperty "result has desired width" $ \i ->
+      let tgt = max 0 . unWidth . iWidth $ i
+      in (== tgt) . width $ resize (iBackground i)
+            (iHeight i) (iWidth i) (iHoriz i) (iVert i)
+            (iBox i)
+    ]
+
+  , testGroup "sepH"
+    [ testProperty "result has correct width" $ \i len ->
+      let tgt = (sum . map width $ bs)
+            + max 0 len * max 0 (length bs - 1)
+          bs = iBoxes i
+      in (== tgt) . width $ sepH (iBackground i) len
+          (iVert i) (iBoxes i)
+    ]
   ]
