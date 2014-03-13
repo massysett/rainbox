@@ -3,7 +3,7 @@ module Rainbox.ReaderTests where
 import qualified Rainbox as R
 import Rainbox.Reader
 import Rainbox.BoxTests
-import Test.QuickCheck
+import Test.QuickCheck hiding (resize)
 import Test.Tasty.QuickCheck (testProperty)
 import Test.Tasty
 import Data.Functor.Identity
@@ -30,6 +30,27 @@ tests = testGroup "ReaderTests"
     let p = R.grow (iBackground i) (iHeight i) (iWidth i)
           (iVert i) (iHoriz i) (iBox i)
     in testEq s (grow (iHeight i) (iWidth i) (iBox i)) p
+
+  , testProperty "growH" $ \(SpecPair i s) ->
+    let p = R.growH (iBackground i) (unWidth . iWidth $ i)
+          (iHoriz i) (iBox i)
+    in testEq s (growH (unWidth . iWidth $ i)
+        (iBox i)) p
+
+  , testProperty "growV" $ \(SpecPair i s) ->
+    let p = R.growV (iBackground i) (unHeight . iHeight $ i)
+          (iVert i) (iBox i)
+    in testEq s (growV (unHeight . iHeight $ i)
+        (iBox i)) p
+
+  , testProperty "column" $ \(SpecPair i s) ->
+    let p = R.column (iBackground i) (iHoriz i) (iBoxes i)
+    in testEq s (column (iBoxes i)) p
+
+  , testProperty "resize" $ \(SpecPair i s) ->
+    let p = R.resize (iBackground i) (iHeight i) (iWidth i)
+          (iHoriz i) (iVert i) (iBox i)
+    in testEq s (resize (iHeight i) (iWidth i) (iBox i)) p
   ]
 
 testEq :: Eq a => Specs -> Env Identity a -> a -> Bool
