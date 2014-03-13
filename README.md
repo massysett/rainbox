@@ -13,6 +13,15 @@ module is best read in your text editor or through the Github web
 interface, as it is written in literate Haskell, which HsColour does
 not fare so well with.
 
+Portability
+===========
+
+There's nothing unportable in Rainbox; however, it does use
+[Rainbow](http://hackage.haskell.org/package/rainbow) which works
+only on UNIX-like systems because it uses the UNIX terminfo library.
+I only develop for UNIX-like systems because they are the only ones
+I use.
+
 License
 =======
 
