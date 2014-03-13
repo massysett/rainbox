@@ -51,6 +51,40 @@ tests = testGroup "ReaderTests"
     let p = R.resize (iBackground i) (iHeight i) (iWidth i)
           (iHoriz i) (iVert i) (iBox i)
     in testEq s (resize (iHeight i) (iWidth i) (iBox i)) p
+
+  , testProperty "resizeH" $ \(SpecPair i s) ->
+    let p = R.resizeH (iBackground i) (unWidth . iWidth $ i)
+          (iHoriz i) (iBox i)
+    in testEq s (resizeH (unWidth . iWidth $ i) (iBox i)) p
+
+  , testProperty "resizeV" $ \(SpecPair i s) ->
+    let p = R.resizeV (iBackground i) (unHeight . iHeight $ i)
+          (iVert i) (iBox i)
+    in testEq s (resizeV (unHeight . iHeight $ i) (iBox i)) p
+
+  , testProperty "sepH" $ \(SpecPair i s) ->
+    let p = R.sepH (iBackground i) (spaceH s) (iVert i) (iBoxes i)
+    in testEq s (sepH (spaceH s) (iBoxes i)) p
+
+  , testProperty "sepV" $ \(SpecPair i s) ->
+    let p = R.sepV (iBackground i) (spaceV s) (iHoriz i) (iBoxes i)
+    in testEq s (sepV (spaceV s) (iBoxes i)) p
+
+  , testProperty "punctuateH" $ \(SpecPair i s) ->
+    let p = R.punctuateH (iBackground i) (iVert i) (iBox i) (iBoxes i)
+    in testEq s (punctuateH (iBox i) (iBoxes i)) p
+
+  , testProperty "punctuateV" $ \(SpecPair i s) ->
+    let p = R.punctuateV (iBackground i) (iHoriz i) (iBox i) (iBoxes i)
+    in testEq s (punctuateV (iBox i) (iBoxes i)) p
+
+  , testProperty "viewH" $ \(SpecPair i s) ->
+    let p = R.viewH (unWidth . iWidth $ i) (iHoriz i) (iBox i)
+    in testEq s (viewH (unWidth . iWidth $ i) (iBox i)) p
+
+  , testProperty "viewV" $ \(SpecPair i s) ->
+    let p = R.viewV (unHeight . iHeight $ i) (iVert i) (iBox i)
+    in testEq s (viewV (unHeight . iHeight $ i) (iBox i)) p
   ]
 
 testEq :: Eq a => Specs -> Env Identity a -> a -> Bool
