@@ -4,16 +4,23 @@
 name:                rainbox
 version:             0.1.0.0
 synopsis:            Two-dimensional box pretty printing, with colors
--- description:         
+description:         
+  Prints boxes in two dimensions, with colors.  Boxes are
+  automatically padded with necessary whitespace.
+  .
+  For more information, please see
+  .
+  <http://www.github.com/massysett/rainbox>
+
 homepage:            http://www.github.com/massysett/rainbox
 license:             BSD3
 license-file:        LICENSE
 author:              Omari Norman
 maintainer:          omari@smileystation.com
--- copyright:           
+copyright:           2014 Omari Norman
 category:            Text
 build-type:          Simple
--- extra-source-files:  
+extra-source-files:  README.md
 cabal-version:       >=1.10
 
 library
