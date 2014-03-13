@@ -2,7 +2,8 @@
 module Rainbox
   ( -- * Backgrounds
     Background(..)
-  , B.defaultBackground
+  , defaultBackground
+  , same
   
   -- * Box properties
   , B.Row(..)
@@ -63,6 +64,7 @@ module Rainbox
 
 import Data.List (intersperse)
 import System.Console.Rainbow
+import System.Console.Rainbow.Colors
 import qualified Rainbox.Box as B
 import Rainbox.Box
   ( Box
@@ -76,6 +78,14 @@ import Rainbox.Box
   , unBox
   )
 import qualified System.IO as IO
+
+-- | Use the default background colors of the current terminal.
+defaultBackground :: B.Background
+defaultBackground = B.Background c8_default c256_default
+
+-- | Use the same color for 8 and 256-color backgrounds.
+same :: Color8 -> B.Background
+same c = B.Background c (to256 c)
 
 --
 -- # Box making

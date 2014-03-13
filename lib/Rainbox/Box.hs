@@ -27,7 +27,6 @@
 module Rainbox.Box
   ( -- * Background
     Background(..)
-  , defaultBackground
 
   -- * Box
   , Row(..)
@@ -78,10 +77,6 @@ data Background = Background
   { boxBackground8 :: Color8
   , boxBackground256 :: Color256
   } deriving (Eq, Show)
-
--- | Use the default background colors of the current terminal.
-defaultBackground :: Background
-defaultBackground = Background c8_default c256_default
 
 -- # Box
 

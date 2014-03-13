@@ -85,6 +85,11 @@ tests = testGroup "ReaderTests"
   , testProperty "viewV" $ \(SpecPair i s) ->
     let p = R.viewV (unHeight . iHeight $ i) (iVert i) (iBox i)
     in testEq s (viewV (unHeight . iHeight $ i) (iBox i)) p
+
+  , testProperty "view" $ \(SpecPair i s) ->
+    let p = R.view (iHeight i) (iWidth i) (iVert i) (iHoriz i)
+          (iBox i)
+    in testEq s (view (iHeight i) (iWidth i) (iBox i)) p
   ]
 
 testEq :: Eq a => Specs -> Env Identity a -> a -> Bool
