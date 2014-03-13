@@ -4,6 +4,12 @@ Rainbox
 Provides pretty printing of boxes in two dimensions.  Rainbox is
 useful for console programs that need to format tabular data.
 
+Current development status
+==========================
+
+Right now the library is done and all the tests pass; I'm working
+on documentation.
+
 Documentation
 =============
 
