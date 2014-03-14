@@ -29,6 +29,7 @@ library
       Rainbox
     , Rainbox.Reader
     , Rainbox.Box
+    , Rainbox.Table
     , Rainbox.Tutorial
     , Rainbox.Tutorial.Names
 
