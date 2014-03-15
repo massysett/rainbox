@@ -31,6 +31,7 @@ library
     , Rainbox.Box
     , Rainbox.Table
     , Rainbox.Tree
+    , Rainbox.Tree.Zipper
     , Rainbox.Tutorial
     , Rainbox.Tutorial.Names
 
