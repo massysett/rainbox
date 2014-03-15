@@ -2,6 +2,7 @@ module Rainbox.Tree where
 
 import System.Console.Rainbow
 import System.Console.Rainbow.Colors
+import Data.Monoid
 import qualified Data.Text as X
 
 class HasHeight a where
@@ -19,8 +20,8 @@ instance HasHeight Chunk where
 
 -- | Background colors to use when inserting necessary padding.
 data Background = Background
-  { boxBackground8 :: Color8
-  , boxBackground256 :: Color256
+  { background8 :: Color8
+  , background256 :: Color256
   } deriving (Eq, Show)
 
 data Blob = Blob
@@ -170,4 +171,95 @@ instance HasHeight (Container a) where
   height c = case orientation c of
     OHoriz -> maximum . (0:) . map height . children $ c
     OVert -> sum . map height . children $ c
+
+--
+-- Rendering
+--
+
+blobToChunk :: Background -> Blob -> Chunk
+blobToChunk bk bl
+  | opaque bl = blob bl
+  | otherwise = blob bl <> bc8 (background8 bk)
+                        <> bc256 (background256 bk)
+
+-- | A 'Rod' is a 'Bar' after necessary background coloring is
+-- performed.  It still is not padded.
+newtype Rod = Rod { unRod :: [Chunk] }
+  deriving (Eq, Show)
+
+barToRod :: Background -> Bar -> Rod
+barToRod bk = Rod . map (blobToChunk bk) . unBar
+
+data Pad = Pad
+  { padSize :: Int
+  , padBackground :: Background
+  } deriving (Eq, Show)
+
+-- | A 'Clatch' is a 'Rod' with necessary padding.
+data Clatch = Clatch
+  { leftPad :: Int
+  , clatchChunks :: [Chunk]
+  , rightPad :: Int
+  , cltBackground :: Background
+  } deriving (Eq, Show)
+
+-- | A set of 'Clatch'es.  Every 'Clatch' inside will have the same
+-- number of characters.
+
+data Clatches = Clatches
+  { ctsClatches :: [Clatch]
+  , ctsWidth :: Int
+  } deriving (Eq, Show)
+
+instance HasWidth Clatches where
+  width = ctsWidth
+
+instance HasHeight Clatches where
+  height = length . ctsClatches
+
+cellToClatches :: Cell -> Attributes a -> Clatches
+cellToClatches = undefined
+
+containerToClatches :: Container a -> Attributes a -> Clatches
+containerToClatches = undefined
+
+padVert :: Background -> Int -> Align Vert -> Clatches -> Clatches
+padVert b i v (Clatches cs w) = Clatches (tp ++ cs ++ bt) w
+  where
+    pad = Clatch w [] 0 b
+    tp = replicate nTop pad
+    bt = replicate nBot pad
+    diff = max 0 $ i - length cs
+    (nTop, nBot)
+      | diff <= 0 = (0, 0)
+      | v == top = (0, diff)
+      | v == bottom = (diff, 0)
+      | otherwise = split diff
+
+padHoriz :: Background -> Int -> Align Horiz -> Clatches -> Clatches
+padHoriz b i h (Clatches cs w) = Clatches cs' w'
+  where
+    (w', cs')
+      | diff <= 0 = (w, cs)
+      | otherwise = (i, map doPad cs)
+    diff = max 0 $ i - w
+    doPad cltch = cltch { leftPad = leftPad cltch + lpad
+                        , rightPad = rightPad cltch + rpad
+                        }
+    (lpad, rpad)
+      | h == left = (0, diff)
+      | h == right = (diff, 0)
+      | otherwise = split diff
+
+boxToClatches :: Box a -> Clatches
+boxToClatches b = case contents b of
+  Left c -> cellToClatches c (attributes b)
+  Right c -> containerToClatches c (attributes b)
+
+-- | Split a number into two parts, so that the sum of the two parts
+-- is equal to the original number.
+split :: Int -> (Int, Int)
+split i = (r, r + rm)
+  where
+    (r, rm) = i `quotRem` 2
 
