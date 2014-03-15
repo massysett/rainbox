@@ -195,13 +195,27 @@ data Pad = Pad
   , padBackground :: Background
   } deriving (Eq, Show)
 
+instance HasWidth Pad where
+  width = max 0 . padSize
+
+instance HasHeight Pad where
+  height = const 1
+
 -- | A 'Clatch' is a 'Rod' with necessary padding.
 data Clatch = Clatch
-  { leftPad :: Int
+  { leftPad :: [Pad]
   , clatchChunks :: [Chunk]
-  , rightPad :: Int
-  , cltBackground :: Background
+  , rightPad :: [Pad]
   } deriving (Eq, Show)
+
+instance HasWidth Clatch where
+  width c =
+    sum (map width . leftPad $ c)
+    + sum (map width . clatchChunks $ c)
+    + sum (map width . rightPad $ c)
+
+instance HasHeight Clatch where
+  height = const 1
 
 -- | A set of 'Clatch'es.  Every 'Clatch' inside will have the same
 -- number of characters.
@@ -212,7 +226,7 @@ data Clatches = Clatches
   } deriving (Eq, Show)
 
 instance HasWidth Clatches where
-  width = ctsWidth
+  width = sum . map width . ctsClatches
 
 instance HasHeight Clatches where
   height = length . ctsClatches
@@ -221,12 +235,44 @@ cellToClatches :: Cell -> Attributes a -> Clatches
 cellToClatches = undefined
 
 containerToClatches :: Container a -> Attributes a -> Clatches
-containerToClatches = undefined
+containerToClatches c a = case orientation c of
+  OHoriz -> mergeHoriz
+    . map (padVert (background a) h' (alignV a))
+    . map boxToClatches
+    . children $ c
+    where
+      h' = maximum . (0:) . map height . children $ c
+  OVert -> mergeVert
+    . map (padHoriz (background a) w' (alignH a))
+    . map boxToClatches
+    . children $ c
+    where
+      w' = maximum . (0:) . map width . children $ c
+
+mergeVert :: [Clatches] -> Clatches
+mergeVert cs = Clatches ls' w
+  where
+    ls' = concat . map ctsClatches $ cs
+    w = case cs of
+      [] -> 0
+      x:_ -> ctsWidth x
+
+mergeHoriz :: [Clatches] -> Clatches
+mergeHoriz cs = Clatches ls' w
+  where
+    w = sum . map ctsWidth $ cs
+    ls' = foldr (zipWith merge) (repeat (Clatch [] [] []))
+            (map ctsClatches cs)
+    merge c1 c2 = Clatch
+      { leftPad = leftPad c1 ++ leftPad c2
+      , clatchChunks = clatchChunks c1 ++ clatchChunks c2
+      , rightPad = rightPad c1 ++ rightPad c2
+      }
 
 padVert :: Background -> Int -> Align Vert -> Clatches -> Clatches
 padVert b i v (Clatches cs w) = Clatches (tp ++ cs ++ bt) w
   where
-    pad = Clatch w [] 0 b
+    pad = Clatch [Pad w b] [] []
     tp = replicate nTop pad
     bt = replicate nBot pad
     diff = max 0 $ i - length cs
@@ -243,13 +289,15 @@ padHoriz b i h (Clatches cs w) = Clatches cs' w'
       | diff <= 0 = (w, cs)
       | otherwise = (i, map doPad cs)
     diff = max 0 $ i - w
-    doPad cltch = cltch { leftPad = leftPad cltch + lpad
-                        , rightPad = rightPad cltch + rpad
+    doPad cltch = cltch { leftPad = lpad ++ leftPad cltch
+                        , rightPad = rightPad cltch ++ rpad
                         }
     (lpad, rpad)
-      | h == left = (0, diff)
-      | h == right = (diff, 0)
-      | otherwise = split diff
+      | h == left = ([], [Pad diff b])
+      | h == right = ([Pad diff b], [])
+      | otherwise = ([Pad l b], [Pad r b])
+      where
+        (l, r) = split diff
 
 boxToClatches :: Box a -> Clatches
 boxToClatches b = case contents b of
