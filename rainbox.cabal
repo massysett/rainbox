@@ -30,6 +30,7 @@ library
     , Rainbox.Reader
     , Rainbox.Box
     , Rainbox.Table
+    , Rainbox.Tree
     , Rainbox.Tutorial
     , Rainbox.Tutorial.Names
 
