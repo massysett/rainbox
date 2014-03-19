@@ -57,13 +57,18 @@ module Rainbox
   , resizeH
   , resizeV
 
+  -- * Tables
+  , table
+
   -- * Printing Boxes
   , render
   , printBox
   ) where
 
-import Data.List (intersperse)
+import qualified Data.Text as X
+import Data.List (intersperse, transpose)
 import System.Console.Rainbow
+import System.Console.Rainbow.Types
 import System.Console.Rainbow.Colors
 import qualified Rainbox.Box as B
 import Rainbox.Box
@@ -261,6 +266,85 @@ punctuateH bk a sep = B.catH bk a . intersperse sep
 -- | A vertical version of 'punctuateH'.
 punctuateV :: Background -> Align Horiz -> Box -> [Box] -> Box
 punctuateV bk a sep = B.catV bk a . intersperse sep
+
+-- # Tables
+
+newtype Bar a = Bar { unBar :: [a] }
+  deriving (Eq, Ord, Show)
+
+newtype Cell a = Cell { unCell :: [Bar a] }
+  deriving (Eq, Ord, Show)
+
+newtype Record a = Record { unRecord :: [Cell a] }
+  deriving (Eq, Ord, Show)
+
+newtype Records a = Records { unRecords :: [[a]] }
+  deriving (Eq, Ord, Show)
+
+newtype Column a = Column { unColumn :: [Cell a] }
+  deriving (Eq, Ord, Show)
+
+newtype Columns a = Columns { unColumns :: [[a]] }
+  deriving (Eq, Ord, Show)
+
+data Crate = Crate
+  { crateText :: X.Text
+  , format :: TextSpec -> TextSpec
+  }
+
+instance Show Crate where
+  show = X.unpack . crateText
+
+
+
+
+
+-- | Produce a multi-cell table.  Each column will be lined up
+-- properly.  Does not insert any space between rows or columns.
+
+table
+  :: [Align Horiz]
+  -- ^ Specifies the alignment for each column in the table.  This
+  -- list can be infinite.  If the table has more columns than are
+  -- in this list, the extra columns will be formatted with a 'left'
+  -- justification.
+
+  -> [[[[Chunk]]]]
+  -- ^ Each @[Chunk]@ represents a single line in a cell of the
+  -- table.  Each @[[Chunk]]@ represents a single cell of the table.
+  -- Each @[[[Chunk]]]@ represents a single row of cells in the
+  -- table.
+
+  -> [[Background -> Box]]
+  -- ^ The result is a list of lists; there is one list for each row
+  -- in the table, and then one function for each cell of the table.
+  -- Each list in the result list always has the same length.  If
+  -- the input rows are not equal in length, each row will have
+  -- extra cells added on the end as needed so that each row is as
+  -- long as the longest row in the table.
+table as rs = map justify equalLengthRows
+  where
+    equalLengthRows = map equalizeLen rs
+      where
+        equalizeLen row = take maxRowLen $ row ++ repeat [[]]
+        maxRowLen = maximum . (0:) . map length $ rs
+
+    justify = zipWith3 mkCell aligns widths
+      where
+        aligns = as ++ repeat B.left
+
+        widths = map (maximum . (0:)) . map (map cellWidth)
+          . transpose $ equalLengthRows
+          where
+            cellWidth = maximum . (0:) . map lineWidth
+              where
+                lineWidth = sum . map X.length . map text
+
+        mkCell align width cell =
+          \bk -> growH bk width align
+                  . B.catV bk align
+                  . map B.chunks
+                  $ cell
 
 render :: Box -> [Chunk]
 render bx = case unBox bx of
