@@ -28,6 +28,7 @@ library
   exposed-modules:     
       Rainbox
     , Rainbox.Reader
+    , Rainbox.Table
     , Rainbox.Box
     --, Rainbox.Tutorial
     --, Rainbox.Tutorial.Names
