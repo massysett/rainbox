@@ -58,7 +58,7 @@ module Rainbox
   , resizeV
 
   -- * Tables
-  , table
+  , justifyRecords
 
   -- * Printing Boxes
   , render
@@ -78,6 +78,7 @@ import Rainbox.Box
   , Vert
   , Height(..)
   , Width(..)
+  , HasWidth(..)
   , Background
   , unRow
   , unBox
@@ -272,11 +273,20 @@ punctuateV bk a sep = B.catV bk a . intersperse sep
 newtype Bar a = Bar { unBar :: [a] }
   deriving (Eq, Ord, Show)
 
+instance HasWidth a => HasWidth (Bar a) where
+  width = sum . map width . unBar
+
 newtype Cell a = Cell { unCell :: [Bar a] }
   deriving (Eq, Ord, Show)
 
+instance HasWidth a => HasWidth (Cell a) where
+  width = maximum . (0:) . map width . unCell
+
 newtype Record a = Record { unRecord :: [Cell a] }
   deriving (Eq, Ord, Show)
+
+instance HasWidth a => HasWidth (Record a) where
+  width = sum . map width . unRecord
 
 newtype Records a = Records { unRecords :: [[a]] }
   deriving (Eq, Ord, Show)
@@ -295,56 +305,76 @@ data Crate = Crate
 instance Show Crate where
   show = X.unpack . crateText
 
+toColumns :: Records a -> Columns a
+toColumns = Columns . transpose . unRecords
 
+toRecords :: Columns a -> Records a
+toRecords = Records . transpose . unColumns
+
+-- | Given a Columns, return the length of the widest cell in each
+-- column.
+columnWidths :: HasWidth a => Columns a -> [Int]
+columnWidths = map (maximum . (0:)) . map (map width) . unColumns
 
 
 
 -- | Produce a multi-cell table.  Each column will be lined up
 -- properly.  Does not insert any space between rows or columns.
 
-table
+-- | Equalize the cells in each Record and justify them.
+justifyRecords
   :: [Align Horiz]
   -- ^ Specifies the alignment for each column in the table.  This
   -- list can be infinite.  If the table has more columns than are
   -- in this list, the extra columns will be formatted with a 'left'
   -- justification.
 
-  -> [[[[Chunk]]]]
-  -- ^ Each @[Chunk]@ represents a single line in a cell of the
-  -- table.  Each @[[Chunk]]@ represents a single cell of the table.
-  -- Each @[[[Chunk]]]@ represents a single row of cells in the
-  -- table.
+  -> [Record Chunk]
+  -- ^ Each input Record.
 
-  -> [[Background -> Box]]
-  -- ^ The result is a list of lists; there is one list for each row
-  -- in the table, and then one function for each cell of the table.
-  -- Each list in the result list always has the same length.  If
-  -- the input rows are not equal in length, each row will have
-  -- extra cells added on the end as needed so that each row is as
-  -- long as the longest row in the table.
-table as rs = map justify equalLengthRows
+  -> Records (Background -> Box)
+justifyRecords as rs = Records $ map justify equalLengthRows
   where
-    equalLengthRows = map equalizeLen rs
-      where
-        equalizeLen row = take maxRowLen $ row ++ repeat [[]]
-        maxRowLen = maximum . (0:) . map length $ rs
+    equalLengthRows = equalizeRecordLengths rs
 
-    justify = zipWith3 mkCell aligns widths
+    justify = zipWith3 makeCell aligns widths . unRecord
       where
         aligns = as ++ repeat B.left
-
+        --widths = columnWidths . toColumns $ equalLengthRows
         widths = map (maximum . (0:)) . map (map cellWidth)
-          . transpose $ equalLengthRows
+          . transpose
+          . map (map (map unBar))
+          . map (map unCell)
+          . map unRecord $ equalLengthRows
           where
             cellWidth = maximum . (0:) . map lineWidth
               where
                 lineWidth = sum . map X.length . map text
 
-        mkCell align width cell =
-          \bk -> growH bk width align
-                  . B.catV bk align
-                  . map B.chunks
-                  $ cell
+-- | Takes list of input Record and returns a list of Record where
+-- each Record has the same number of cells.
+equalizeRecordLengths :: [Record a] -> [Record a]
+equalizeRecordLengths rs = map equalize rs
+  where
+    equalize (Record rec) = Record . take maxLen
+      $ rec ++ repeat (Cell [])
+    maxLen = maximum . (0:) . map (length . unRecord) $ rs
+
+-- | Creates a cell.
+makeCell
+  :: Align Horiz
+  -> Int
+  -- ^ Padded final width of cell
+  -> Cell Chunk
+  -> Background
+  -> Box
+makeCell align width cell bk
+  = growH bk width align
+  . B.catV bk align
+  . map B.chunks
+  . map unBar
+  . unCell
+  $ cell
 
 render :: Box -> [Chunk]
 render bx = case unBox bx of

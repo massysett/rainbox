@@ -158,6 +158,9 @@ instance HasWidth Box where
       [] -> error "cols: error"
       x:_ -> width x
 
+instance HasWidth Chunk where
+  width = X.length . text
+
 -- # Making Boxes
 
 -- | A blank 'Box'.  Useful for aligning other 'Box'.
