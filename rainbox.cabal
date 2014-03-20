@@ -29,11 +29,10 @@ library
       Rainbox
     , Rainbox.Reader
     , Rainbox.Box
-    , Rainbox.Table
     , Rainbox.Tree
     , Rainbox.Tree.Zipper
-    , Rainbox.Tutorial
-    , Rainbox.Tutorial.Names
+    --, Rainbox.Tutorial
+    --, Rainbox.Tutorial.Names
 
   build-depends:
       base >=4.5.0.0 && < 5

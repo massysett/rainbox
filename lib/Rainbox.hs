@@ -72,7 +72,14 @@ module Rainbox
   , toRecords
   , toColumns
   , justifyRecords
+  , Carton(..)
+  , opaque
+  , clear
+  , opaqueInColumn
+  , opaqueInRecord
+  , formatRows
   , formatTableTextSpec
+  , fancyTable
 
   -- * Printing Boxes
   , render
@@ -293,10 +300,16 @@ newtype Bar a = Bar { unBar :: [a] }
 instance HasWidth a => HasWidth (Bar a) where
   width = sum . map width . unBar
 
+instance Functor Bar where
+  fmap f = Bar . map f . unBar
+
 -- | A 'Cell' consists of multiple screen lines; each screen line is
 -- a 'Bar'.
 newtype Cell a = Cell { unCell :: [Bar a] }
   deriving (Eq, Ord, Show)
+
+instance Functor Cell where
+  fmap f = Cell . map (fmap f) . unCell
 
 instance HasWidth a => MultiWidth (Cell a) where
   multiWidth = map width . unCell
@@ -306,6 +319,9 @@ instance HasWidth a => MultiWidth (Cell a) where
 newtype Record a = Record { unRecord :: [Cell a] }
   deriving (Eq, Ord, Show)
 
+instance Functor Record where
+  fmap f = Record . map (fmap f) . unRecord
+
 -- | Several 'Record' grouped together.  For a 'Records'  to be
 -- valid, every 'Record' must contain an equal number of 'Cell'.  A
 -- valid 'Records' might not appear justified, because the cells
@@ -313,9 +329,15 @@ newtype Record a = Record { unRecord :: [Cell a] }
 newtype Records a = Records { unRecords :: [Record a] }
   deriving (Eq, Ord, Show)
 
+instance Functor Records where
+  fmap f = Records . map (fmap f) . unRecords
+
 -- | Several 'Cell' that are in one tabular column.
 newtype Column a = Column { unColumn :: [Cell a] }
   deriving (Eq, Ord, Show)
+
+instance Functor Column where
+  fmap f = Column . map (fmap f) . unColumn
 
 instance HasWidth a => MultiWidth (Column a) where
   multiWidth = concat . map multiWidth . unColumn
@@ -333,6 +355,9 @@ maxWidth = maximum . (0:) . multiWidth
 -- valid, each 'Column' must have an equal number of 'Cell'.
 newtype Columns a = Columns { unColumns :: [Column a] }
   deriving (Eq, Ord, Show)
+
+instance Functor Columns where
+  fmap f = Columns . map (fmap f) . unColumns
 
 data Crate = Crate
   { crateText :: X.Text
@@ -428,7 +453,84 @@ boxFromCrates
   -> TextSpec
   -> Cell Crate
   -> Box
-boxFromCrates = undefined
+boxFromCrates bk ah ts cell
+  = B.catV bk ah
+  . map B.chunks
+  . map barToChunks
+  . unCell
+  $ cell
+  where
+    barToChunks = map crateToChunk . unBar
+    crateToChunk c = Chunk (format c ts) (crateText c)
+
+--
+-- # Fancy table
+--
+
+data Carton = Carton
+  { isOpaqueInRecord :: Bool
+  , isOpaqueInColumn :: Bool
+  , cartonChunk :: Chunk
+  } deriving (Eq, Ord, Show)
+
+opaque :: Chunk -> Carton
+opaque = Carton True True
+
+clear :: Chunk -> Carton
+clear = Carton False False
+
+opaqueInColumn :: Chunk -> Carton
+opaqueInColumn = Carton False True
+
+opaqueInRecord :: Chunk -> Carton
+opaqueInRecord = Carton True False
+
+formatRows
+  :: [(TextSpec, Record Carton)]
+  -- ^ Each record in the table.  The TextSpec is the default
+  -- formatting for the row.  It is combined with the Carton and,
+  -- later, with column-specific formatting.
+  -> [(Background, Record Crate)]
+  -- ^ Suitable for use with formatTableTextSpec.
+formatRows = map f
+  where
+    f (ts, rc) = (bk, fmap (cartonToCrate ts) rc)
+      where
+        bk = backgroundFromTextSpec ts
+
+-- | With information about the TextSpec for a particular Record,
+-- convert a Carton to a Crate.
+cartonToCrate
+  :: TextSpec
+  -> Carton
+  -> Crate
+cartonToCrate tsRec ctn = Crate txt fmt
+  where
+    chk = cartonChunk ctn
+    txt = text chk
+    tsChk = textSpec chk
+    fmt tsClm = case (isOpaqueInRecord ctn, isOpaqueInColumn ctn) of
+      (True, True) -> tsChk
+      (True, False) -> tsChk <> tsClm
+      (False, True) -> tsChk <> tsRec
+      (False, False) -> tsChk <> tsClm <> tsRec
+
+backgroundFromTextSpec :: TextSpec -> B.Background
+backgroundFromTextSpec ts = B.Background bk8 bk256
+  where
+    bk8 = case getLast . background8 . style8 $ ts of
+      Nothing -> c8_default
+      Just c -> c
+    bk256 = case getLast . background256 . style256 $ ts of
+      Nothing -> c256_default
+      Just c -> c
+
+fancyTable
+  :: [(Align Horiz, TextSpec)]
+  -> Int
+  -> [(TextSpec, Record Carton)]
+  -> [[Box]]
+fancyTable = undefined
 
 render :: Box -> [Chunk]
 render bx = case unBox bx of
