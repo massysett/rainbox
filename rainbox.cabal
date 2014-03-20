@@ -29,8 +29,6 @@ library
       Rainbox
     , Rainbox.Reader
     , Rainbox.Box
-    , Rainbox.Tree
-    , Rainbox.Tree.Zipper
     --, Rainbox.Tutorial
     --, Rainbox.Tutorial.Names
 
