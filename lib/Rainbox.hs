@@ -58,13 +58,28 @@ module Rainbox
   , resizeV
 
   -- * Tables
+  , Bar(..)
+  , Cell(..)
+  , Record(..)
+  , Records
+  , unRecords
+  , Column(..)
+  , MultiWidth(..)
+  , maxWidth
+  , Columns
+  , unColumns
+  , Crate(..)
+  , toRecords
+  , toColumns
   , justifyRecords
+  , formatTableTextSpec
 
   -- * Printing Boxes
   , render
   , printBox
   ) where
 
+import Data.Monoid
 import qualified Data.Text as X
 import Data.List (intersperse, transpose)
 import System.Console.Rainbow
@@ -270,31 +285,53 @@ punctuateV bk a sep = B.catV bk a . intersperse sep
 
 -- # Tables
 
+-- | Forms the basis of a 'Cell'.  A single screen line of text
+-- within a single 'Cell'.
 newtype Bar a = Bar { unBar :: [a] }
   deriving (Eq, Ord, Show)
 
 instance HasWidth a => HasWidth (Bar a) where
   width = sum . map width . unBar
 
+-- | A 'Cell' consists of multiple screen lines; each screen line is
+-- a 'Bar'.
 newtype Cell a = Cell { unCell :: [Bar a] }
   deriving (Eq, Ord, Show)
 
-instance HasWidth a => HasWidth (Cell a) where
-  width = maximum . (0:) . map width . unCell
+instance HasWidth a => MultiWidth (Cell a) where
+  multiWidth = map width . unCell
 
+-- | A 'Record' consists of multple 'Cell' which appear on screen
+-- from left to right.
 newtype Record a = Record { unRecord :: [Cell a] }
   deriving (Eq, Ord, Show)
 
-instance HasWidth a => HasWidth (Record a) where
-  width = sum . map width . unRecord
-
-newtype Records a = Records { unRecords :: [[a]] }
+-- | Several 'Record' grouped together.  For a 'Records'  to be
+-- valid, every 'Record' must contain an equal number of 'Cell'.  A
+-- valid 'Records' might not appear justified, because the cells
+-- might not be of uniform width.
+newtype Records a = Records { unRecords :: [Record a] }
   deriving (Eq, Ord, Show)
 
+-- | Several 'Cell' that are in one tabular column.
 newtype Column a = Column { unColumn :: [Cell a] }
   deriving (Eq, Ord, Show)
 
-newtype Columns a = Columns { unColumns :: [[a]] }
+instance HasWidth a => MultiWidth (Column a) where
+  multiWidth = concat . map multiWidth . unColumn
+
+-- | Something that has multiple possible widths at different
+-- points.
+
+class MultiWidth a where
+  multiWidth :: a -> [Int]
+
+maxWidth :: MultiWidth a => a -> Int
+maxWidth = maximum . (0:) . multiWidth
+
+-- | Several 'Column' grouped together.  For a 'Columns' to be
+-- valid, each 'Column' must have an equal number of 'Cell'.
+newtype Columns a = Columns { unColumns :: [Column a] }
   deriving (Eq, Ord, Show)
 
 data Crate = Crate
@@ -306,20 +343,16 @@ instance Show Crate where
   show = X.unpack . crateText
 
 toColumns :: Records a -> Columns a
-toColumns = Columns . transpose . unRecords
+toColumns = Columns . map Column . transpose
+  . map unRecord . unRecords
 
 toRecords :: Columns a -> Records a
-toRecords = Records . transpose . unColumns
+toRecords = Records . map Record . transpose
+  . map unColumn . unColumns
 
--- | Given a Columns, return the length of the widest cell in each
--- column.
 columnWidths :: HasWidth a => Columns a -> [Int]
-columnWidths = map (maximum . (0:)) . map (map width) . unColumns
+columnWidths = map maxWidth . unColumns
 
-
-
--- | Produce a multi-cell table.  Each column will be lined up
--- properly.  Does not insert any space between rows or columns.
 
 -- | Equalize the cells in each Record and justify them.
 justifyRecords
@@ -332,29 +365,21 @@ justifyRecords
   -> [Record Chunk]
   -- ^ Each input Record.
 
-  -> Records (Background -> Box)
-justifyRecords as rs = Records $ map justify equalLengthRows
+  -> [[Background -> Box]]
+justifyRecords as rs = map justify' . unRecords $ equalLengthRows
   where
     equalLengthRows = equalizeRecordLengths rs
 
-    justify = zipWith3 makeCell aligns widths . unRecord
+    justify' = zipWith3 makeCell aligns widths . unRecord
       where
         aligns = as ++ repeat B.left
-        --widths = columnWidths . toColumns $ equalLengthRows
-        widths = map (maximum . (0:)) . map (map cellWidth)
-          . transpose
-          . map (map (map unBar))
-          . map (map unCell)
-          . map unRecord $ equalLengthRows
-          where
-            cellWidth = maximum . (0:) . map lineWidth
-              where
-                lineWidth = sum . map X.length . map text
+        widths = columnWidths . toColumns $ equalLengthRows
+
 
 -- | Takes list of input Record and returns a list of Record where
 -- each Record has the same number of cells.
-equalizeRecordLengths :: [Record a] -> [Record a]
-equalizeRecordLengths rs = map equalize rs
+equalizeRecordLengths :: [Record a] -> Records a
+equalizeRecordLengths rs = Records $ map equalize rs
   where
     equalize (Record rec) = Record . take maxLen
       $ rec ++ repeat (Cell [])
@@ -368,13 +393,42 @@ makeCell
   -> Cell Chunk
   -> Background
   -> Box
-makeCell align width cell bk
-  = growH bk width align
+makeCell align wdth cell bk
+  = growH bk wdth align
   . B.catV bk align
   . map B.chunks
   . map unBar
   . unCell
   $ cell
+
+-- | Format the rows and columns of a table with TextSpec.
+formatTableTextSpec
+  :: [(Align Horiz, TextSpec)]
+  -- ^ One element in the list for each column in the table.  If
+  -- there are extra columns, they are formatted with the default
+  -- 'TextSpec' and with left alignment.
+
+  -> [(Background, Record Crate)]
+  -- ^ Each row of the table is represented with a pair.  The
+  -- 'Background' is combined with the 'TextSpec' for this column
+  -- (specified in the first argument) to format necessary extra
+  -- padding.
+
+  -> [[Box]]
+formatTableTextSpec formats rws = map toBoxes rws
+  where
+    fmts = formats ++ repeat (B.left, mempty)
+    toBoxes (bk, Record cs) = zipWith mkBox fmts cs
+      where
+        mkBox (align, ts) crate = boxFromCrates bk align ts crate
+
+boxFromCrates
+  :: Background
+  -> Align Horiz
+  -> TextSpec
+  -> Cell Crate
+  -> Box
+boxFromCrates = undefined
 
 render :: Box -> [Chunk]
 render bx = case unBox bx of

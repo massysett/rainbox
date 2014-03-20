@@ -145,6 +145,10 @@ newtype Width = Width { unWidth :: Int }
 -- | How many columns are in this thing? A column is one character
 -- wide.  Every 'Row' in a 'Box' always has the same number of
 -- columns.
+--
+-- This is for things that have a single, solitary width, not things
+-- like columns that might have different widths at different
+-- points.
 class HasWidth a where
   width :: a -> Int
 
