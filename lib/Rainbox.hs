@@ -58,6 +58,7 @@ module Rainbox
   , resizeV
 
   -- * Tables
+  , backgroundFromTextSpec
   , Bar(..)
   , Cell(..)
   , Record(..)
@@ -75,9 +76,9 @@ module Rainbox
   , Carton(..)
   , opaque
   , clear
-  , opaqueInColumn
-  , opaqueInRecord
-  , formatRows
+  , mappendRecord
+  , mappendColumn
+  , formatRecords
   , formatTableTextSpec
   , fancyTable
 
@@ -361,7 +362,7 @@ instance Functor Columns where
 
 data Crate = Crate
   { crateText :: X.Text
-  , format :: TextSpec -> TextSpec
+  , crateFormat :: TextSpec -> TextSpec
   }
 
 instance Show Crate where
@@ -433,27 +434,29 @@ formatTableTextSpec
   -- there are extra columns, they are formatted with the default
   -- 'TextSpec' and with left alignment.
 
-  -> [(Background, Record Crate)]
+  -> [(TextSpec, Record Crate)]
   -- ^ Each row of the table is represented with a pair.  The
-  -- 'Background' is combined with the 'TextSpec' for this column
-  -- (specified in the first argument) to format necessary extra
-  -- padding.
+  -- 'TextSpec' for each Record is combined with the 'TextSpec' for
+  -- each respective column to format necessary padding.
 
   -> [[Box]]
 formatTableTextSpec formats rws = map toBoxes rws
   where
     fmts = formats ++ repeat (B.left, mempty)
-    toBoxes (bk, Record cs) = zipWith mkBox fmts cs
+    toBoxes (tsRec, Record cs) = zipWith mkBox fmts cs
       where
-        mkBox (align, ts) crate = boxFromCrates bk align ts crate
+        mkBox (align, tsCol) crate = boxFromCrates tsRec align tsCol crate
 
 boxFromCrates
-  :: Background
+  :: TextSpec
+  -- ^ TextSpec for the 'Record'
   -> Align Horiz
+  -- ^ Alignment for the column
   -> TextSpec
+  -- ^ TextSpec for the 'Column'
   -> Cell Crate
   -> Box
-boxFromCrates bk ah ts cell
+boxFromCrates tsRec ah tsCol cell
   = B.catV bk ah
   . map B.chunks
   . map barToChunks
@@ -461,42 +464,57 @@ boxFromCrates bk ah ts cell
   $ cell
   where
     barToChunks = map crateToChunk . unBar
-    crateToChunk c = Chunk (format c ts) (crateText c)
+    crateToChunk c = Chunk (crateFormat c tsCol) (crateText c)
+    bk = backgroundFromTextSpec $ tsCol <> tsRec
 
 --
 -- # Fancy table
 --
 
 data Carton = Carton
-  { isOpaqueInRecord :: Bool
-  , isOpaqueInColumn :: Bool
-  , cartonChunk :: Chunk
-  } deriving (Eq, Ord, Show)
+  { cartonText :: X.Text
+  , cartonFormat :: TextSpec -> TextSpec -> TextSpec
+  -- ^ This function will be applied to the TextSpec for the Record and
+  -- the TextSpec for the column (in that order) to get the final
+  -- TextSpec for the text in the Carton.
+  }
 
+instance Show Carton where
+  show c = "carton: " ++ show (cartonText c)
+
+-- | Use only the TextSpec given in the Chunk.  Ignore the TextSpec
+-- from the Column and from the Record.
 opaque :: Chunk -> Carton
-opaque = Carton True True
+opaque c = Carton (text c) (\_ _ -> textSpec c)
 
+-- | To get the final TextSpec, start with the TextSpec for the
+-- 'Column', 'mappend' the TextSpec for the 'Record', and then
+-- 'mappend' the TextSpec for the 'Chunk' given here.
 clear :: Chunk -> Carton
-clear = Carton False False
+clear c = Carton (text c) (\col rec -> col <> rec <> textSpec c)
 
-opaqueInColumn :: Chunk -> Carton
-opaqueInColumn = Carton False True
+-- | To get the final TextSpec, start with the TextSpec for the
+-- 'Record' and then 'mappend' the TextSpec for the 'Chunk' given
+-- here.
+mappendRecord :: Chunk -> Carton
+mappendRecord c = Carton (text c) (\_ rec -> rec <> textSpec c)
 
-opaqueInRecord :: Chunk -> Carton
-opaqueInRecord = Carton True False
+-- | To get the final TextSpec, start with the TextSpec for the
+-- 'Column' and then 'mappend' the TextSpec for the 'Chunk' given
+-- here.
+mappendColumn :: Chunk -> Carton
+mappendColumn c = Carton (text c) (\col _ -> col <> textSpec c)
 
-formatRows
+formatRecords
   :: [(TextSpec, Record Carton)]
   -- ^ Each record in the table.  The TextSpec is the default
   -- formatting for the row.  It is combined with the Carton and,
   -- later, with column-specific formatting.
-  -> [(Background, Record Crate)]
+  -> [(TextSpec, Record Crate)]
   -- ^ Suitable for use with formatTableTextSpec.
-formatRows = map f
+formatRecords = map f
   where
-    f (ts, rc) = (bk, fmap (cartonToCrate ts) rc)
-      where
-        bk = backgroundFromTextSpec ts
+    f (ts, rc) = (ts, fmap (cartonToCrate ts) rc)
 
 -- | With information about the TextSpec for a particular Record,
 -- convert a Carton to a Crate.
@@ -504,16 +522,8 @@ cartonToCrate
   :: TextSpec
   -> Carton
   -> Crate
-cartonToCrate tsRec ctn = Crate txt fmt
-  where
-    chk = cartonChunk ctn
-    txt = text chk
-    tsChk = textSpec chk
-    fmt tsClm = case (isOpaqueInRecord ctn, isOpaqueInColumn ctn) of
-      (True, True) -> tsChk
-      (True, False) -> tsChk <> tsClm
-      (False, True) -> tsChk <> tsRec
-      (False, False) -> tsChk <> tsClm <> tsRec
+cartonToCrate tsRec ctn =
+  Crate (cartonText ctn) (cartonFormat ctn tsRec)
 
 backgroundFromTextSpec :: TextSpec -> B.Background
 backgroundFromTextSpec ts = B.Background bk8 bk256
@@ -527,10 +537,12 @@ backgroundFromTextSpec ts = B.Background bk8 bk256
 
 fancyTable
   :: [(Align Horiz, TextSpec)]
-  -> Int
   -> [(TextSpec, Record Carton)]
   -> [[Box]]
-fancyTable = undefined
+fancyTable cols recs = formatTableTextSpec cols cartons
+  where
+    cartons = formatRecords recs
+
 
 render :: Box -> [Chunk]
 render bx = case unBox bx of
