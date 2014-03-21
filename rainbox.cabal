@@ -89,3 +89,5 @@ Test-Suite rainbox-test
       RainboxDir
     , Rainbox.BoxTests
     , Rainbox.ReaderTests
+    , Rainbox.BoxDir
+    , Rainbox.Box.PrimitivesTests

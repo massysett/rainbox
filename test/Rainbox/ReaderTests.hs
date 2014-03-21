@@ -2,7 +2,7 @@ module Rainbox.ReaderTests where
 
 import qualified Rainbox.Box as R
 import Rainbox.Reader
-import Rainbox.BoxTests
+import Rainbox.Box.PrimitivesTests
 import Test.QuickCheck hiding (resize)
 import Test.Tasty.QuickCheck (testProperty)
 import Test.Tasty
