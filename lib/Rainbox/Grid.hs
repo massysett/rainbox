@@ -1,4 +1,4 @@
-module Rainbox.Table where
+module Rainbox.Grid where
 
 import Rainbox
 import Rainbox.Array2d

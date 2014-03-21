@@ -28,7 +28,7 @@ library
   exposed-modules:     
       Rainbox
     , Rainbox.Reader
-    , Rainbox.Table
+    , Rainbox.Grid
     , Rainbox.Box
     , Rainbox.Array2d
     --, Rainbox.Tutorial
