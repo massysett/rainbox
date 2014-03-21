@@ -138,10 +138,21 @@ labelRows f a = listArray (minRow, maxRow) es
 arrayByRows
   :: [[a]]
   -> Array (Int, Int) a
-arrayByRows = undefined
+arrayByRows ls = listArray ((0,0), (colMax, rowMax)) ls'
+  where
+    ls' = concat $ transpose ls
+    colMax = case ls of
+      [] -> 0
+      x:_ -> length x
+    rowMax = length ls
 
 arrayByCols
   :: [[a]]
   -> Array (Int, Int) a
-arrayByCols = undefined
+arrayByCols ls = listArray ((0,0), (colMax, rowMax)) . concat $ ls
+  where
+    colMax = length ls
+    rowMax = case ls of
+      [] -> 0
+      x:_ -> length x
 

@@ -61,4 +61,14 @@ records =
       , email = "lower@rhyta.com"
       , balance = "100,451.05"
       }
+
+  , Record
+      { firstName = "Vip"
+      , lastName = "Vipperman"
+      , address = [ "10000 Smiley Lane", "Denver, CO 80266" ]
+      , phone = [("home", "(303) 380-2000")]
+      , email = "vip@rhyta.com"
+      , balance = "903.80"
+      }
+
   ]

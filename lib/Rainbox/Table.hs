@@ -3,6 +3,7 @@ module Rainbox.Table where
 import Rainbox
 import Rainbox.Array2d
 import Data.Array
+import Data.String
 import System.Console.Rainbow
 
 class MultiWidth a where
@@ -15,6 +16,9 @@ maxWidth = maximum . (0:) . multiWidth
 -- within a single 'Cell'.
 newtype Bar = Bar { unBar :: [Chunk] }
   deriving (Eq, Ord, Show)
+
+instance IsString Bar where
+  fromString = Bar . (:[]) . fromString
 
 barToBox :: Bar -> Box
 barToBox = chunks . unBar
@@ -33,6 +37,9 @@ data Cell = Cell
   , vert :: Align Vert
   , background :: Background
   } deriving (Eq, Show)
+
+instance IsString Cell where
+  fromString s = Cell [(fromString s)] left top defaultBackground
 
 instance MultiWidth Cell where
   multiWidth = map width . bars

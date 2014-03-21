@@ -27,6 +27,10 @@ be used to insert necessary white space to make your text fill up a
 `Box`.  When gluing `Box`es together you can specify how they are
 justified.
 
+For maximum flexibility, use the `Rainbox` module or the
+`Rainbox.Reader` module, which is similar to `Rainbox` but wraps
+many of its functions in a `Reader` monad.  
+
 Everything you need from the `rainbox` package is in the `Rainbox`
 module.  Alternatively, you can use the `Rainbox.Reader` module,
 which has the same purpose as `Rainbox` but wraps many of its
