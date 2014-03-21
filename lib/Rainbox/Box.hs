@@ -67,6 +67,7 @@ module Rainbox.Box
 
 import Data.Monoid
 import Data.List (intersperse)
+import qualified Data.Text as X
 import System.Console.Rainbow
 import System.Console.Rainbow.Types
 import System.Console.Rainbow.Colors
@@ -79,7 +80,6 @@ import Rainbox.Box.Primitives
   , Height(..)
   , Width(..)
   , Background
-  , unBar
   , unBox
   )
 import qualified System.IO as IO
@@ -93,6 +93,11 @@ backgroundFromTextSpec ts = B.Background bk8 bk256
     bk256 = case getLast . background256 . style256 $ ts of
       Nothing -> c256_default
       Just c -> c
+
+backgroundToTextSpec :: B.Background -> TextSpec
+backgroundToTextSpec (B.Background bk8 bk256) = TextSpec
+  { style8 = mempty { background8 = Last . Just $ bk8 }
+  , style256 = mempty { background256 = Last . Just $ bk256 } }
 
 -- | Use the default background colors of the current terminal.
 defaultBackground :: B.Background
@@ -281,7 +286,16 @@ render :: Box -> [Chunk]
 render bx = case unBox bx of
   B.NoHeight _ -> []
   B.WithHeight rw ->
-    concat . concat . map (: [["\n"]]) . map unBar $ rw
+    concat . concat . map (: [["\n"]])
+    . map renderRod $ rw
+
+renderRod :: B.Rod -> [Chunk]
+renderRod = map toChunk . B.unRod
+  where
+    toChunk = either spcToChunk id . B.unNibble
+    spcToChunk ss =
+      Chunk (backgroundToTextSpec (B.spcBackground ss))
+            (X.replicate (B.numSpaces ss) (X.singleton ' '))
 
 -- | Prints a Box to standard output.  If standard output is not a
 -- terminal, no colors are used.  Otherwise, colors are used if your

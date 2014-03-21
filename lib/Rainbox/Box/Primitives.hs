@@ -40,8 +40,14 @@ module Rainbox.Box.Primitives
 
   -- * Box
   , Bar(..)
+  , Rod(..)
   , barToBox
   , barsToBox
+  , Nibble
+  , unNibble
+  , Spaces
+  , numSpaces
+  , spcBackground
   , BoxP(..)
   , Box
   , unBox
@@ -82,6 +88,23 @@ data Background = Background
 
 -- # Box
 
+data Spaces = Spaces
+  { numSpaces :: Int
+  , spcBackground :: Background
+  } deriving (Eq, Show)
+
+instance HasWidth Spaces where
+  width = numSpaces
+
+newtype Nibble = Nibble { unNibble :: Either Spaces Chunk }
+  deriving (Eq, Show)
+
+instance IsString Nibble where
+  fromString = Nibble . Right . fromString
+
+instance HasWidth Nibble where
+  width = either width width . unNibble
+
 -- | Occupies a single row on screen.  The 'Chunk' you place in a
 -- 'Bar' should not have any control characters such as newlines or
 -- tabs, as rainbox assumes that each character in a 'Bar' takes up
@@ -121,15 +144,29 @@ instance Monoid Bar where
 newtype Box = Box { unBox :: BoxP }
   deriving (Eq, Show)
 
+newtype Rod = Rod { unRod :: [Nibble] }
+  deriving (Eq, Show)
+
+instance IsString Rod where
+  fromString = Rod . (:[]) . fromString
+
+instance HasWidth Rod where
+  width = sum . map width . unRod
+
 -- | Box payload.  Has the data of the box.
 data BoxP
   = NoHeight Int
   -- ^ A Box with width but no height.  The Int must be at least
   -- zero.  If it is zero, the Box has no height and no width.
-  | WithHeight [Bar]
+  | WithHeight [Rod]
   -- ^ A Box that has height of at least one.  It must have at least
   -- one component Bar.
   deriving (Eq, Show)
+
+instance HasWidth BoxP where
+  width b = case b of
+    NoHeight w -> w
+    WithHeight ns -> sum . map width $ ns
 
 instance IsString Box where
   fromString = Box . WithHeight . (:[]) . fromString
@@ -140,7 +177,7 @@ instance IsString Box where
 newtype Height = Height { unHeight :: Int }
   deriving (Eq, Ord, Show)
 
--- | How many 'Bar' are in this 'Box'?
+-- | How many 'Rod' are in this 'Box'?
 height :: Box -> Int
 height b = case unBox b of
   NoHeight _ -> 0
@@ -185,13 +222,13 @@ blank bk r c
   | unHeight r < 1 = Box $ NoHeight (max 0 (unWidth c))
   | otherwise = Box . WithHeight $ replicate (unHeight r) row
   where
-    row | unWidth c < 1 = Bar []
-        | otherwise = Bar $ [ blanks bk (unWidth c) ]
+    row | unWidth c < 1 = Rod []
+        | otherwise = Rod [ blanks bk (unWidth c) ]
 
 -- | A 'Box' made of 'Chunk'.  Always one Bar tall, and has as many
 -- columns as there are characters in the 'Chunk'.
 chunks :: [Chunk] -> Box
-chunks = Box . WithHeight . (:[]) . Bar
+chunks = Box . WithHeight . (:[]) . Rod . map (Nibble . Right)
 
 -- | Alignment.
 data Align a = Center | NonCenter a
@@ -312,9 +349,9 @@ catV bk al bs
 --
 -- where dashes is a 'Bar' with data, and dots is a blank 'Bar'.
 
-padHoriz :: Background -> Align Vert -> Int -> BoxP -> [Bar]
+padHoriz :: Background -> Align Vert -> Int -> BoxP -> [Rod]
 padHoriz bk a hght bp = case bp of
-  NoHeight w -> map (Bar . (:[])) . replicate h $ blanks bk w
+  NoHeight w -> map (Rod . (:[])) . replicate h $ blanks bk w
   WithHeight rs -> concat [tp, rs, bot]
     where
       nPad = max 0 $ h - length rs
@@ -322,7 +359,7 @@ padHoriz bk a hght bp = case bp of
         Center -> split nPad
         NonCenter ATop -> (0, nPad)
         NonCenter ABottom -> (nPad, 0)
-      pad = Bar [blanks bk len]
+      pad = Rod [blanks bk len]
         where
           len = case rs of
             [] -> 0
@@ -344,9 +381,9 @@ padVert
   :: Background
   -> Align Horiz
   -> Int
-  -> Bar
-  -> Bar
-padVert bk a wdth rw@(Bar cs) = Bar . concat $ [lft, cs, rght]
+  -> Rod
+  -> Rod
+padVert bk a wdth rw@(Rod cs) = Rod . concat $ [lft, cs, rght]
   where
     nPad = max 0 $ w - width rw
     (nLeft, nRight) = case a of
@@ -376,10 +413,10 @@ padVert bk a wdth rw@(Bar cs) = Bar . concat $ [lft, cs, rght]
 -- Strange behavior will result if each input list is not exactly
 -- the same length.
 
-mergeHoriz :: [[Bar]] -> [Bar]
-mergeHoriz = foldr (zipWith merge) (repeat (Bar []))
+mergeHoriz :: [[Rod]] -> [Rod]
+mergeHoriz = foldr (zipWith merge) (repeat (Rod []))
   where
-    merge (Bar r1) (Bar r2) = Bar $ r1 ++ r2
+    merge (Rod r1) (Rod r2) = Rod $ r1 ++ r2
 
 -- # Viewing
 
@@ -435,8 +472,8 @@ viewH wdth a (Box b) = Box $ case b of
     w = max 0 wdth
 
 
-dropChars :: Int -> Bar -> Bar
-dropChars colsIn = Bar . go colsIn . unBar
+dropChars :: Int -> Rod -> Rod
+dropChars colsIn = Rod . go colsIn . unRod
   where
     go n cs
       | n <= 0 = cs
@@ -446,11 +483,17 @@ dropChars colsIn = Bar . go colsIn . unBar
            | lenX <= n -> go (n - lenX) xs
            | otherwise -> x' : xs
            where
-             lenX = X.length . text $ x
-             x' = x { text = X.drop n . text $ x }
+             lenX = case unNibble x of
+              Left blnk -> numSpaces blnk
+              Right chk -> X.length . text $ chk
+             x' = case unNibble x of
+              Left blnk -> Nibble . Left $
+                blnk { numSpaces = numSpaces blnk - n }
+              Right chk -> Nibble . Right $ 
+                chk { text = X.drop n . text $ chk }
 
-takeChars :: Int -> Bar -> Bar
-takeChars colsIn = Bar . go colsIn . unBar
+takeChars :: Int -> Rod -> Rod
+takeChars colsIn = Rod . go colsIn . unRod
   where
     go n cs
       | n <= 0 = []
@@ -460,8 +503,14 @@ takeChars colsIn = Bar . go colsIn . unBar
             | lenX <= n -> x : go (n - lenX) xs
             | otherwise -> [x']
             where
-              lenX = X.length . text $ x
-              x' = x { text = X.take n . text $ x }
+              (lenX, x') = case unNibble x of
+                Left blnk ->
+                  ( numSpaces blnk,
+                    Nibble . Left $ blnk { numSpaces = n } )
+                Right chk ->
+                  ( X.length . text $ chk,
+                    Nibble . Right $
+                    chk { text = X.take n . text $ chk } )
 
 --
 -- # Helpers
@@ -473,13 +522,8 @@ blanks
   -- ^ Background colors
   -> Int
   -- ^ Number of blanks
-  -> Chunk
-blanks (Background b8 b256) c = Chunk ts t
-  where
-    t = X.replicate c (X.singleton ' ')
-    ts = mempty { style8 = mempty { background8 = Last . Just $ b8 }
-                , style256 = mempty { background256 = Last . Just $ b256 }
-                }
+  -> Nibble
+blanks bk c = Nibble (Left (Spaces c bk))
 
 -- | Split a number into two parts, so that the sum of the two parts
 -- is equal to the original number.

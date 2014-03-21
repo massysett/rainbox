@@ -1,15 +1,37 @@
-module Rainbox where
+module Rainbox
+  ( -- * Backgrounds
+    Background(..)
+  , defaultBackground
+  , backgroundFromTextSpec
+  , same
+
+  -- * Alignment
+  , Align
+  , Horiz
+  , Vert
+  , top
+  , bottom
+  , left
+  , right
+  , center
+
+  -- * Bar
+  , Bar(..)
+
+  -- * Cell
+  , Cell(..)
+
+  -- * Creating Box and gluing them together
+  , gridByRows
+  , gridByCols
+  , boxCells
+  , glueBoxes
+  ) where
 
 import Rainbox.Box
 import Rainbox.Array2d
 import Data.Array
 import Data.String
-
-class MultiWidth a where
-  multiWidth :: a -> [Int]
-
-maxWidth :: MultiWidth a => a -> Int
-maxWidth = maximum . (0:) . multiWidth
 
 -- | A 'Cell' consists of multiple screen lines; each screen line is
 -- a 'Bar'.
@@ -23,8 +45,8 @@ data Cell = Cell
 instance IsString Cell where
   fromString s = Cell [(fromString s)] left top defaultBackground
 
-instance MultiWidth Cell where
-  multiWidth = map width . bars
+cellWidths :: Cell -> [Int]
+cellWidths = map width . bars
 
 boxCells
   :: (Ix col, Ix row)
@@ -34,7 +56,7 @@ boxCells ay = cells $ mapTable conv tbl
   where
     tbl = Table (labelCols getWidth ay) (labelRows getHeight ay) ay
       where
-        getWidth _ = maximum . (0:) . concat . map multiWidth . map snd
+        getWidth _ = maximum . (0:) . concat . map cellWidths . map snd
         getHeight _ = maximum . (0:) . map (length . bars . snd)
     conv lCol lRow _ _ c = grow bk (Height lRow) (Width lCol) av ah bx
       where
@@ -50,10 +72,8 @@ glueBoxes
   . map (catV defaultBackground left)
   . columns
 
-grid
-  :: (Ix col, Ix row)
-  => Array (col, row) Cell
-  -> Box
-grid = glueBoxes . boxCells
+gridByRows :: [[Cell]] -> Box
+gridByRows = glueBoxes . boxCells . arrayByRows
 
-
+gridByCols :: [[Cell]] -> Box
+gridByCols = glueBoxes . boxCells . arrayByCols
