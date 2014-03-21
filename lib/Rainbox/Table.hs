@@ -56,6 +56,24 @@ data Table lCol lRow col row a = Table
 instance (Ix col, Ix row) => Functor (Table lCol lRow col row) where
   fmap f t =  t { cells = fmap f . cells $ t }
 
+mapColLabels
+  :: (Ix col, Ix row)
+  => (lCol -> col -> [(lRow, row, a)] -> lCol')
+  -> Table lCol lRow col row a
+  -> Table lCol' lRow col row a
+mapColLabels f (Table cs rs ls) = Table cs' rs ls
+  where
+    ((colMin, rowMin), (colMax, rowMax)) = bounds ls
+    cs' = listArray (colMin, colMax) es
+      where
+        es = zipWith3 f (elems cs) (indices cs) rows
+          where
+            rows = map mkRow . indices $ cs
+              where
+                mkRow idx = zipWith3 (,,) (elems rs)
+                  (indices rs)
+                  (map (ls !) (range ((idx, rowMin), (idx, rowMax))))
+
 tableByRow
   :: (Ix col, Ix row)
   => ((row, col), (row, col))
@@ -70,7 +88,7 @@ tableByRow (aMin, aMax) cols rows = Table cs rs ls
       . concat . transpose . map snd $ rows
 
 tableByColumn
-  :: (Ix lCol, Ix lRow, Ix col, Ix row)
+  :: (Ix col, Ix row)
   => ((col, row), (col, row))
   -> [lRow]
   -> [(lCol, [a])]
@@ -93,16 +111,6 @@ drawGrid
   -> Table TextSpec TextSpec col row (Cell Carton)
   -> Array (col, row) (Cell Chunk, Background)
 drawGrid = undefined
-
-data Spacer a = Spacer
-  { column :: a
-  , spacer :: Bool
-  } deriving (Eq, Ord, Show)
-
-instance (Bounded a, Ix a) => Ix (Spacer a) where
-  range = undefined
-  inRange = undefined
-  index = undefined
 
 {-
   ( Bar(..)
