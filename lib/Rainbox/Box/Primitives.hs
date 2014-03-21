@@ -28,18 +28,6 @@ module Rainbox.Box.Primitives
   ( -- * Background
     Background(..)
 
-  -- * Box
-  , Row(..)
-  , BoxP(..)
-  , Box
-  , unBox
-
-  -- * Height and Width
-  , Height(..)
-  , height
-  , Width(..)
-  , HasWidth(..)
-
   -- * Alignment
   , Align
   , Vert
@@ -49,6 +37,20 @@ module Rainbox.Box.Primitives
   , bottom
   , left
   , right
+
+  -- * Box
+  , Bar(..)
+  , barToBox
+  , barsToBox
+  , BoxP(..)
+  , Box
+  , unBox
+
+  -- * Height and Width
+  , Height(..)
+  , height
+  , Width(..)
+  , HasWidth(..)
 
   -- * Making Boxes
   , blank
@@ -81,8 +83,8 @@ data Background = Background
 -- # Box
 
 -- | Occupies a single row on screen.  The 'Chunk' you place in a
--- 'Row' should not have any control characters such as newlines or
--- tabs, as rainbox assumes that each character in a 'Row' takes up
+-- 'Bar' should not have any control characters such as newlines or
+-- tabs, as rainbox assumes that each character in a 'Bar' takes up
 -- one screen column and that each character does not create
 -- newlines.  Leave newline handling up to rainbox.  However,
 -- rainbox does nothing to enforce this practice.  Similarly, use of
@@ -91,15 +93,21 @@ data Background = Background
 -- and think it takes up two screen columns, when in reality it will
 -- take up only one screen column.  So, if you need accented
 -- characters, use a single Unicode code point, not two code points.
-newtype Row = Row { unRow :: [Chunk] }
+newtype Bar = Bar { unBar :: [Chunk] }
   deriving (Eq, Show)
 
-instance IsString Row where
-  fromString = Row . (:[]) . fromString
+barToBox :: Bar -> Box
+barToBox = chunks . unBar
 
-instance Monoid Row where
-  mempty = Row []
-  mappend (Row l) (Row r) = Row $ l ++ r
+barsToBox :: Background -> Align Horiz -> [Bar] -> Box
+barsToBox bk ah = catV bk ah . map barToBox
+
+instance IsString Bar where
+  fromString = Bar . (:[]) . fromString
+
+instance Monoid Bar where
+  mempty = Bar []
+  mappend (Bar l) (Bar r) = Bar $ l ++ r
 
 -- | A 'Box' has a width in columns and a height in rows.  Its
 -- height and width both are always at least zero.  It can have
@@ -118,9 +126,9 @@ data BoxP
   = NoHeight Int
   -- ^ A Box with width but no height.  The Int must be at least
   -- zero.  If it is zero, the Box has no height and no width.
-  | WithHeight [Row]
+  | WithHeight [Bar]
   -- ^ A Box that has height of at least one.  It must have at least
-  -- one component Row.
+  -- one component Bar.
   deriving (Eq, Show)
 
 instance IsString Box where
@@ -132,7 +140,7 @@ instance IsString Box where
 newtype Height = Height { unHeight :: Int }
   deriving (Eq, Ord, Show)
 
--- | How many 'Row' are in this 'Box'?
+-- | How many 'Bar' are in this 'Box'?
 height :: Box -> Int
 height b = case unBox b of
   NoHeight _ -> 0
@@ -143,7 +151,7 @@ newtype Width = Width { unWidth :: Int }
   deriving (Eq, Ord, Show)
 
 -- | How many columns are in this thing? A column is one character
--- wide.  Every 'Row' in a 'Box' always has the same number of
+-- wide.  Every 'Bar' in a 'Box' always has the same number of
 -- columns.
 --
 -- This is for things that have a single, solitary width, not things
@@ -152,8 +160,8 @@ newtype Width = Width { unWidth :: Int }
 class HasWidth a where
   width :: a -> Int
 
-instance HasWidth Row where
-  width = sum . map (X.length . text) . unRow
+instance HasWidth Bar where
+  width = sum . map (X.length . text) . unBar
 
 instance HasWidth Box where
   width b = case unBox b of
@@ -177,13 +185,13 @@ blank bk r c
   | unHeight r < 1 = Box $ NoHeight (max 0 (unWidth c))
   | otherwise = Box . WithHeight $ replicate (unHeight r) row
   where
-    row | unWidth c < 1 = Row []
-        | otherwise = Row $ [ blanks bk (unWidth c) ]
+    row | unWidth c < 1 = Bar []
+        | otherwise = Bar $ [ blanks bk (unWidth c) ]
 
--- | A 'Box' made of 'Chunk'.  Always one Row tall, and has as many
+-- | A 'Box' made of 'Chunk'.  Always one Bar tall, and has as many
 -- columns as there are characters in the 'Chunk'.
 chunks :: [Chunk] -> Box
-chunks = Box . WithHeight . (:[]) . Row
+chunks = Box . WithHeight . (:[]) . Bar
 
 -- | Alignment.
 data Align a = Center | NonCenter a
@@ -302,11 +310,11 @@ catV bk al bs
 -- > --------
 -- > ........
 --
--- where dashes is a 'Row' with data, and dots is a blank 'Row'.
+-- where dashes is a 'Bar' with data, and dots is a blank 'Bar'.
 
-padHoriz :: Background -> Align Vert -> Int -> BoxP -> [Row]
+padHoriz :: Background -> Align Vert -> Int -> BoxP -> [Bar]
 padHoriz bk a hght bp = case bp of
-  NoHeight w -> map (Row . (:[])) . replicate h $ blanks bk w
+  NoHeight w -> map (Bar . (:[])) . replicate h $ blanks bk w
   WithHeight rs -> concat [tp, rs, bot]
     where
       nPad = max 0 $ h - length rs
@@ -314,7 +322,7 @@ padHoriz bk a hght bp = case bp of
         Center -> split nPad
         NonCenter ATop -> (0, nPad)
         NonCenter ABottom -> (nPad, 0)
-      pad = Row [blanks bk len]
+      pad = Bar [blanks bk len]
         where
           len = case rs of
             [] -> 0
@@ -323,7 +331,7 @@ padHoriz bk a hght bp = case bp of
   where
     h = max 0 hght
 
--- | Given the resulting width, pad a 'Row'.  So, when given
+-- | Given the resulting width, pad a 'Bar'.  So, when given
 -- a width of 10 and an alignment of 'right',
 --
 -- > -------
@@ -336,9 +344,9 @@ padVert
   :: Background
   -> Align Horiz
   -> Int
-  -> Row
-  -> Row
-padVert bk a wdth rw@(Row cs) = Row . concat $ [lft, cs, rght]
+  -> Bar
+  -> Bar
+padVert bk a wdth rw@(Bar cs) = Bar . concat $ [lft, cs, rght]
   where
     nPad = max 0 $ w - width rw
     (nLeft, nRight) = case a of
@@ -352,7 +360,7 @@ padVert bk a wdth rw@(Row cs) = Row . concat $ [lft, cs, rght]
     w = max 0 wdth
 
 
--- | Merge several horizontal Height into one set of horizontal 'Row'.
+-- | Merge several horizontal Height into one set of horizontal 'Bar'.
 -- That is:
 --
 -- > ----- ----- -----
@@ -368,10 +376,10 @@ padVert bk a wdth rw@(Row cs) = Row . concat $ [lft, cs, rght]
 -- Strange behavior will result if each input list is not exactly
 -- the same length.
 
-mergeHoriz :: [[Row]] -> [Row]
-mergeHoriz = foldr (zipWith merge) (repeat (Row []))
+mergeHoriz :: [[Bar]] -> [Bar]
+mergeHoriz = foldr (zipWith merge) (repeat (Bar []))
   where
-    merge (Row r1) (Row r2) = Row $ r1 ++ r2
+    merge (Bar r1) (Bar r2) = Bar $ r1 ++ r2
 
 -- # Viewing
 
@@ -427,8 +435,8 @@ viewH wdth a (Box b) = Box $ case b of
     w = max 0 wdth
 
 
-dropChars :: Int -> Row -> Row
-dropChars colsIn = Row . go colsIn . unRow
+dropChars :: Int -> Bar -> Bar
+dropChars colsIn = Bar . go colsIn . unBar
   where
     go n cs
       | n <= 0 = cs
@@ -441,8 +449,8 @@ dropChars colsIn = Row . go colsIn . unRow
              lenX = X.length . text $ x
              x' = x { text = X.drop n . text $ x }
 
-takeChars :: Int -> Row -> Row
-takeChars colsIn = Row . go colsIn . unRow
+takeChars :: Int -> Bar -> Bar
+takeChars colsIn = Bar . go colsIn . unBar
   where
     go n cs
       | n <= 0 = []

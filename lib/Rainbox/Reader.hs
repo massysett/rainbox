@@ -12,7 +12,7 @@ module Rainbox.Reader
   , R.same
 
   -- * Box properties
-  , B.Row(..)
+  , B.Bar(..)
   , B.Box
   , B.unBox
 

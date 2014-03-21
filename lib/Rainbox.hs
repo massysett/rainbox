@@ -4,30 +4,12 @@ import Rainbox.Box
 import Rainbox.Array2d
 import Data.Array
 import Data.String
-import System.Console.Rainbow
 
 class MultiWidth a where
   multiWidth :: a -> [Int]
 
 maxWidth :: MultiWidth a => a -> Int
 maxWidth = maximum . (0:) . multiWidth
-
--- | Forms the basis of a 'Cell'.  A single screen line of text
--- within a single 'Cell'.
-newtype Bar = Bar { unBar :: [Chunk] }
-  deriving (Eq, Ord, Show)
-
-instance IsString Bar where
-  fromString = Bar . (:[]) . fromString
-
-barToBox :: Bar -> Box
-barToBox = chunks . unBar
-
-barsToBox :: Background -> Align Horiz -> [Bar] -> Box
-barsToBox bk ah = catV bk ah . map barToBox
-
-instance HasWidth Bar where
-  width = sum . map width . unBar
 
 -- | A 'Cell' consists of multiple screen lines; each screen line is
 -- a 'Bar'.

@@ -6,11 +6,6 @@ module Rainbox.Box
   , backgroundFromTextSpec
   , same
   
-  -- * Box properties
-  , B.Row(..)
-  , B.Box
-  , B.unBox
-
   -- * Height and columns
   , Height(..)
   , B.height
@@ -26,6 +21,13 @@ module Rainbox.Box
   , B.bottom
   , B.left
   , B.right
+
+  -- * Box properties
+  , B.Bar(..)
+  , B.barToBox
+  , B.barsToBox
+  , B.Box
+  , B.unBox
 
   -- * Making Boxes
   , B.blank
@@ -77,7 +79,7 @@ import Rainbox.Box.Primitives
   , Height(..)
   , Width(..)
   , Background
-  , unRow
+  , unBar
   , unBox
   )
 import qualified System.IO as IO
@@ -279,7 +281,7 @@ render :: Box -> [Chunk]
 render bx = case unBox bx of
   B.NoHeight _ -> []
   B.WithHeight rw ->
-    concat . concat . map (: [["\n"]]) . map unRow $ rw
+    concat . concat . map (: [["\n"]]) . map unBar $ rw
 
 -- | Prints a Box to standard output.  If standard output is not a
 -- terminal, no colors are used.  Otherwise, colors are used if your
