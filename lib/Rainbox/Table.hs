@@ -1,4 +1,110 @@
-module Rainbox.Table
+module Rainbox.Table where
+
+import Rainbox
+import Data.Tuple
+import Data.Array
+import Data.List (transpose)
+import System.Console.Rainbow
+import System.Console.Rainbow.Types
+import qualified Data.Text as X
+
+data Carton = Carton
+  { cartonText :: X.Text
+  , cartonFormat :: TextSpec -> TextSpec -> TextSpec
+  -- ^ This function will be applied to the TextSpec for the Record and
+  -- the TextSpec for the column (in that order) to get the final
+  -- TextSpec for the text in the Carton.
+  }
+
+instance Show Carton where
+  show c = "carton: " ++ show (cartonText c)
+
+maxWidth :: MultiWidth a => a -> Int
+maxWidth = maximum . (0:) . multiWidth
+
+class MultiWidth a where
+  multiWidth :: a -> [Int]
+
+-- | Forms the basis of a 'Cell'.  A single screen line of text
+-- within a single 'Cell'.
+newtype Bar a = Bar { unBar :: [a] }
+  deriving (Eq, Ord, Show)
+
+instance HasWidth a => HasWidth (Bar a) where
+  width = sum . map width . unBar
+
+instance Functor Bar where
+  fmap f = Bar . map f . unBar
+
+-- | A 'Cell' consists of multiple screen lines; each screen line is
+-- a 'Bar'.
+newtype Cell a = Cell { unCell :: [Bar a] }
+  deriving (Eq, Ord, Show)
+
+instance Functor Cell where
+  fmap f = Cell . map (fmap f) . unCell
+
+instance HasWidth a => MultiWidth (Cell a) where
+  multiWidth = map width . unCell
+
+data Table lCol lRow col row a = Table
+  { lCols :: Array col lCol
+  , lRows :: Array row lRow
+  , cells :: Array (col, row) a
+  } deriving Show
+
+instance (Ix col, Ix row) => Functor (Table lCol lRow col row) where
+  fmap f t =  t { cells = fmap f . cells $ t }
+
+tableByRow
+  :: (Ix col, Ix row)
+  => ((row, col), (row, col))
+  -> [lCol]
+  -> [(lRow, [a])]
+  -> Table lCol lRow col row a
+tableByRow (aMin, aMax) cols rows = Table cs rs ls
+  where
+    cs = listArray (snd aMin, snd aMax) cols
+    rs = listArray (fst aMin, fst aMax) (map fst rows)
+    ls = listArray (swap aMin, swap aMax)
+      . concat . transpose . map snd $ rows
+
+tableByColumn
+  :: (Ix lCol, Ix lRow, Ix col, Ix row)
+  => ((col, row), (col, row))
+  -> [lRow]
+  -> [(lCol, [a])]
+  -> Table lCol lRow col row a
+tableByColumn (aMin, aMax) rows cols = Table cs rs ls
+  where
+    rs = listArray (snd aMin, snd aMax) rows
+    cs = listArray (fst aMin, fst aMax) (map fst cols)
+    ls = listArray (aMin, aMax) . concat . map snd $ cols
+
+glueGrid
+  :: (Ix col, Ix row)
+  => Array (col, row) (Cell Chunk, Background)
+  -> Array (col, row) Box
+glueGrid = undefined
+
+drawGrid
+  :: (Ix col, Ix row)
+  => (TextSpec -> TextSpec -> Background)
+  -> Table TextSpec TextSpec col row (Cell Carton)
+  -> Array (col, row) (Cell Chunk, Background)
+drawGrid = undefined
+
+data Spacer a = Spacer
+  { column :: a
+  , spacer :: Bool
+  } deriving (Eq, Ord, Show)
+
+instance (Bounded a, Ix a) => Ix (Spacer a) where
+  range = undefined
+  inRange = undefined
+  index = undefined
+
+{-
   ( Bar(..)
   , Cell(..)
   , Record(..)
@@ -34,28 +140,6 @@ import System.Console.Rainbow.Types
 
 -- # Tables
 
--- | Forms the basis of a 'Cell'.  A single screen line of text
--- within a single 'Cell'.
-newtype Bar a = Bar { unBar :: [a] }
-  deriving (Eq, Ord, Show)
-
-instance HasWidth a => HasWidth (Bar a) where
-  width = sum . map width . unBar
-
-instance Functor Bar where
-  fmap f = Bar . map f . unBar
-
--- | A 'Cell' consists of multiple screen lines; each screen line is
--- a 'Bar'.
-newtype Cell a = Cell { unCell :: [Bar a] }
-  deriving (Eq, Ord, Show)
-
-instance Functor Cell where
-  fmap f = Cell . map (fmap f) . unCell
-
-instance HasWidth a => MultiWidth (Cell a) where
-  multiWidth = map width . unCell
-
 -- | A 'Record' consists of multple 'Cell' which appear on screen
 -- from left to right.
 newtype Record a = Record { unRecord :: [Cell a] }
@@ -86,12 +170,6 @@ instance HasWidth a => MultiWidth (Column a) where
 
 -- | Something that has multiple possible widths at different
 -- points.
-
-class MultiWidth a where
-  multiWidth :: a -> [Int]
-
-maxWidth :: MultiWidth a => a -> Int
-maxWidth = maximum . (0:) . multiWidth
 
 -- | Several 'Column' grouped together.  For a 'Columns' to be
 -- valid, each 'Column' must have an equal number of 'Cell'.
@@ -212,17 +290,6 @@ boxFromCrates tsRec ah tsCol cell
 -- # Fancy table
 --
 
-data Carton = Carton
-  { cartonText :: X.Text
-  , cartonFormat :: TextSpec -> TextSpec -> TextSpec
-  -- ^ This function will be applied to the TextSpec for the Record and
-  -- the TextSpec for the column (in that order) to get the final
-  -- TextSpec for the text in the Carton.
-  }
-
-instance Show Carton where
-  show c = "carton: " ++ show (cartonText c)
-
 -- | Use only the TextSpec given in the Chunk.  Ignore the TextSpec
 -- from the Column and from the Record.
 opaque :: Chunk -> Carton
@@ -274,4 +341,4 @@ fancyTable cols recs = formatTableTextSpec cols cartons
   where
     cartons = formatRecords recs
 
-
+-}
