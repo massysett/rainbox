@@ -80,9 +80,9 @@ module Rainbox.Reader
 
 import Control.Monad.Trans.Reader
 import Data.Functor.Identity
-import qualified Rainbox.Box as B
-import qualified Rainbox as R
-import Rainbox.Box
+import qualified Rainbox.Box.Primitives as B
+import qualified Rainbox.Box as R
+import Rainbox.Box.Primitives
   ( Box
   , Height
   , Width

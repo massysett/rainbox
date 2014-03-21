@@ -8,7 +8,7 @@ import Test.QuickCheck
 import System.Console.Rainbow
 import qualified Data.Text as X
 import qualified Test.Rainbow.Generators as G
-import Rainbox.Box
+import Rainbox.Box.Primitives
 
 genText :: Gen X.Text
 genText = fmap X.pack $ listOf c

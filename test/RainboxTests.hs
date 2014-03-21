@@ -1,6 +1,6 @@
 module RainboxTests where
 
-import Rainbox
+import Rainbox.Box
 import Rainbox.BoxTests
 import qualified Data.Text as X
 import Test.Tasty.QuickCheck (testProperty)

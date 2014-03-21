@@ -2,7 +2,7 @@
 {-# OPTIONS_GHC -fno-warn-missing-signatures #-}
 module Visual where
 
-import Rainbox
+import Rainbox.Box
 import System.Console.Rainbow
 import System.Console.Rainbow.Colors
 import Data.Monoid

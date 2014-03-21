@@ -1,6 +1,6 @@
 module Rainbox.ReaderTests where
 
-import qualified Rainbox as R
+import qualified Rainbox.Box as R
 import Rainbox.Reader
 import Rainbox.BoxTests
 import Test.QuickCheck hiding (resize)
