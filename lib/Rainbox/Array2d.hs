@@ -14,7 +14,7 @@ module Rainbox.Array2d
   , mapRowLabels
 
   -- * Two-dimensional arrays
-  , columns
+  , cols
   , rows
   , arrayByRows
   , arrayByCols
@@ -35,7 +35,7 @@ data Table lCol lRow col row a = Table
   -- ^ One label for each row
   , cells :: Array (col, row) a
   -- ^ Two-dimensional array of cells
-  } deriving Show
+  } deriving (Eq, Show)
 
 instance (Ix col, Ix row) => Functor (Table lCol lRow col row) where
   fmap f t =  t { cells = fmap f . cells $ t }
@@ -149,9 +149,9 @@ mapRowLabels f (Table cs rs ls) = Table cs rs' ls
     ((colMin, rowMin), (colMax, rowMax)) = bounds ls
     rs' = listArray (rowMin, rowMax) es
       where
-        es = zipWith3 f (elems rs) (indices rs) cols
+        es = zipWith3 f (elems rs) (indices rs) cls
           where
-            cols = map mkCol . indices $ rs
+            cls = map mkCol . indices $ rs
               where
                 mkCol idx = zipWith3 (,,) (elems cs)
                   (indices cs)
@@ -161,11 +161,11 @@ mapRowLabels f (Table cs rs ls) = Table cs rs' ls
 
 -- | Given a two-dimensional array, return a list of columns in
 -- order.
-columns
+cols
   :: (Ix col, Ix row)
   => Array (col, row) a
   -> [[a]]
-columns ay = map getCol $ range (minCol, maxCol)
+cols ay = map getCol $ range (minCol, maxCol)
   where
     ((minCol, minRow), (maxCol, maxRow)) = bounds ay
     ixsRows = range (minRow, maxRow)

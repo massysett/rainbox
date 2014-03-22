@@ -74,7 +74,7 @@ glueBoxes
 glueBoxes
   = catH defaultBackground top
   . map (catV defaultBackground left)
-  . columns
+  . cols
 
 gridByRows :: [[Cell]] -> Box
 gridByRows = glueBoxes . boxCells . arrayByRows

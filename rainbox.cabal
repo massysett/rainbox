@@ -86,6 +86,7 @@ Test-Suite rainbox-test
 
   other-modules:
       RainboxDir
+    , Rainbox.Array2dTests
     , Rainbox.BoxTests
     , Rainbox.ReaderTests
     , Rainbox.BoxDir
