@@ -7,8 +7,8 @@ useful for console programs that need to format tabular data.
 Current development status
 ==========================
 
-Right now the library is done and all the tests pass; I'm working
-on documentation.
+Currently the library is under development and parts of it are
+broken.
 
 Documentation
 =============
