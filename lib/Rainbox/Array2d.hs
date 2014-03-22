@@ -140,11 +140,12 @@ arrayByRows
   -> Array (Int, Int) a
 arrayByRows ls = listArray ((0,0), (colMax, rowMax)) ls'
   where
-    ls' = concat $ transpose ls
-    colMax = case ls of
+    ls' = concat transposed
+    transposed = transpose ls
+    colMax = case transposed of
       [] -> 0
       x:_ -> length x
-    rowMax = length ls
+    rowMax = length transposed
 
 arrayByCols
   :: [[a]]
