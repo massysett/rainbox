@@ -58,7 +58,7 @@ boxCells
   -> Array (col, row) Box
 boxCells ay = cells $ mapTable conv tbl
   where
-    tbl = Table (labelCols getWidth ay) (labelRows getHeight ay) ay
+    tbl = table getWidth getHeight ay
       where
         getWidth _ = maximum . (0:) . concat . map cellWidths . map snd
         getHeight _ = maximum . (0:) . map (length . bars . snd)

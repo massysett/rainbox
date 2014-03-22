@@ -1,21 +1,112 @@
-module Rainbox.Array2d where
+-- | Helpers for two-dimensional arrays.
+module Rainbox.Array2d
+  (
+  -- * Tables
+    Table
+  , lCols
+  , lRows
+  , cells
+  , table
+  , labelCols
+  , labelRows
+  , mapTable
+  , mapColLabels
+  , mapRowLabels
+
+  -- * Two-dimensional arrays
+  , columns
+  , rows
+  , arrayByRows
+  , arrayByCols
+  ) where
 
 import Data.Array
 import Data.List (transpose)
-import Data.Tuple (swap)
 
+-- * Tables
+
+-- | A Table is a two-dimensional array with two associated
+-- one-dimensional arrays: an array of labels for each column, and
+-- an array of labels for each row.
 data Table lCol lRow col row a = Table
   { lCols :: Array col lCol
+  -- ^ One label for each column
   , lRows :: Array row lRow
+  -- ^ One label for each row
   , cells :: Array (col, row) a
+  -- ^ Two-dimensional array of cells
   } deriving Show
 
 instance (Ix col, Ix row) => Functor (Table lCol lRow col row) where
   fmap f t =  t { cells = fmap f . cells $ t }
 
+-- | Make a new Table.
+table
+  :: (Ix col, Ix row)
+  => (col -> [(row, a)] -> lCol)
+  -- ^ Function to generate the column labels.  It is applied to the
+  -- column index and the full contents of the column.
+ 
+  -> (row -> [(col, a)] -> lRow)
+  -- ^ Function to generate the row labels.  It is applied to the
+  -- row index and the full contents of the row.
+
+  -> Array (col, row) a
+  -- ^ Cells of the table
+
+  -> Table lCol lRow col row a
+table fCol fRow ay = Table ayc ayr ay
+  where
+    ayc = labelCols fCol ay
+    ayr = labelRows fRow ay
+
+-- | Given a two-dimensional array and a function that generates
+-- labels, return an array of column labels.
+labelCols
+  :: (Ix col, Ix row)
+  => (col -> [(row, a)] -> lCol)
+  -- ^ Function to generate the column labels.  It is applied to the
+  -- column index and the full contents of the column.
+  -> Array (col, row) a
+  -> Array col lCol
+labelCols f a = listArray (minCol, maxCol) es
+  where
+    ((minCol, minRow), (maxCol, maxRow)) = bounds a
+    es = zipWith f ixsCols . map mkRow $ ixsCols
+      where
+        ixsCols = range (minCol, maxCol)
+        mkRow col = zip ixsRows (map (\rw -> a ! (col, rw)) ixsRows)
+          where
+            ixsRows = range (minRow, maxRow)
+
+-- | Given a two-dimensional array and a function that generates
+-- labels, return an array of row labels.
+labelRows
+  :: (Ix col, Ix row)
+  => (row -> [(col, a)] -> lRow)
+  -- ^ Function to generate the row labels.  It is applied to the
+  -- row index and the full contents of the row.
+  -> Array (col, row) a
+  -> Array row lRow
+labelRows f a = listArray (minRow, maxRow) es
+  where
+    ((minCol, minRow), (maxCol, maxRow)) = bounds a
+    es = zipWith f ixsRows . map mkCol $ ixsRows
+      where
+        ixsRows = range (minRow, maxRow)
+        mkCol row = zip ixsCols (map (\cl -> a ! (cl, row)) ixsCols)
+          where
+            ixsCols = range (minCol, maxCol)
+
+-- | Transform the cells of the table.  Similar to the Functor
+-- instance, but the mapping function has access to the label and
+-- index of each cell in the 'Table'.
 mapTable
   :: (Ix col, Ix row)
   => (lCol -> lRow -> col -> row -> a -> b)
+  -- ^ Function is passed the label for the column, the label for
+  -- the row, the column index, the row index, and the contents of
+  -- the cell.  It returns a new cell.
   -> Table lCol lRow col row a
   -> Table lCol lRow col row b
 mapTable f (Table cs rs ls) = Table cs rs ls'
@@ -24,9 +115,12 @@ mapTable f (Table cs rs ls) = Table cs rs ls'
       where
         g ((col, row), e) = f (cs ! col) (rs ! row) col row e
 
+-- | Transform the column labels.
 mapColLabels
   :: (Ix col, Ix row)
   => (lCol -> col -> [(lRow, row, a)] -> lCol')
+  -- ^ The function is passed the column label, column index, and
+  -- the full contents of the column.
   -> Table lCol lRow col row a
   -> Table lCol' lRow col row a
 mapColLabels f (Table cs rs ls) = Table cs' rs ls
@@ -42,9 +136,12 @@ mapColLabels f (Table cs rs ls) = Table cs' rs ls
                   (indices rs)
                   (map (ls !) (range ((idx, rowMin), (idx, rowMax))))
 
+-- | Transform the row labels.
 mapRowLabels
   :: (Ix col, Ix row)
   => (lRow -> row -> [(lCol, col, a)] -> lRow')
+  -- ^ The function is passed the row label, the row index, and the
+  -- full contents of the row.
   -> Table lCol lRow col row a
   -> Table lCol lRow' col row a
 mapRowLabels f (Table cs rs ls) = Table cs rs' ls
@@ -60,31 +157,10 @@ mapRowLabels f (Table cs rs ls) = Table cs rs' ls
                   (indices cs)
                   (map (ls !) (range ((colMin, idx), (colMax, idx))))
 
-tableByRow
-  :: (Ix col, Ix row)
-  => ((row, col), (row, col))
-  -> [lCol]
-  -> [(lRow, [a])]
-  -> Table lCol lRow col row a
-tableByRow (aMin, aMax) cols rws = Table cs rs ls
-  where
-    cs = listArray (snd aMin, snd aMax) cols
-    rs = listArray (fst aMin, fst aMax) (map fst rws)
-    ls = listArray (swap aMin, swap aMax)
-      . concat . transpose . map snd $ rws
+-- * Two-dimensional arrays
 
-tableByColumn
-  :: (Ix col, Ix row)
-  => ((col, row), (col, row))
-  -> [lRow]
-  -> [(lCol, [a])]
-  -> Table lCol lRow col row a
-tableByColumn (aMin, aMax) rws cols = Table cs rs ls
-  where
-    rs = listArray (snd aMin, snd aMax) rws
-    cs = listArray (fst aMin, fst aMax) (map fst cols)
-    ls = listArray (aMin, aMax) . concat . map snd $ cols
-
+-- | Given a two-dimensional array, return a list of columns in
+-- order.
 columns
   :: (Ix col, Ix row)
   => Array (col, row) a
@@ -95,6 +171,7 @@ columns ay = map getCol $ range (minCol, maxCol)
     ixsRows = range (minRow, maxRow)
     getCol ixCol = map (\rw -> ay ! (ixCol, rw)) ixsRows
 
+-- | Given a two-dimensional array, return a list of rows in order.
 rows
   :: (Ix col, Ix row)
   => Array (col, row) a
@@ -105,36 +182,9 @@ rows ay = map getRow $ range (minRow, maxRow)
     ixsCols = range (minCol, maxCol)
     getRow ixRow = map (\cl -> ay ! (cl, ixRow)) ixsCols
 
-labelCols
-  :: (Ix col, Ix row)
-  => (col -> [(row, a)] -> lCol)
-  -> Array (col, row) a
-  -> Array col lCol
-labelCols f a = listArray (minCol, maxCol) es
-  where
-    ((minCol, minRow), (maxCol, maxRow)) = bounds a
-    es = zipWith f ixsCols . map mkRow $ ixsCols
-      where
-        ixsCols = range (minCol, maxCol)
-        mkRow col = zip ixsRows (map (\rw -> a ! (col, rw)) ixsRows)
-          where
-            ixsRows = range (minRow, maxRow)
-
-labelRows
-  :: (Ix col, Ix row)
-  => (row -> [(col, a)] -> lRow)
-  -> Array (col, row) a
-  -> Array row lRow
-labelRows f a = listArray (minRow, maxRow) es
-  where
-    ((minCol, minRow), (maxCol, maxRow)) = bounds a
-    es = zipWith f ixsRows . map mkCol $ ixsRows
-      where
-        ixsRows = range (minRow, maxRow)
-        mkCol row = zip ixsCols (map (\cl -> a ! (cl, row)) ixsCols)
-          where
-            ixsCols = range (minCol, maxCol)
-
+-- | Generate a two-dimensional array from a list of rows.  Each row
+-- must be of equal length; otherwise, the generated array will have
+-- undefined elements.
 arrayByRows
   :: [[a]]
   -> Array (Int, Int) a
@@ -147,6 +197,9 @@ arrayByRows ls = listArray ((0,0), (colMax, rowMax)) ls'
       x:_ -> length x
     rowMax = length transposed
 
+-- | Generate a two-dimensional array from a list of columns.  Each
+-- column must be of equal length; otherwise, the generated array
+-- will have undefined elements.
 arrayByCols
   :: [[a]]
   -> Array (Int, Int) a

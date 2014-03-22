@@ -39,7 +39,7 @@ packages from `rainbow`:
 > -- module, which is written in literate Haskell.
 > -- It is best viewed in your text editor or through
 > -- Github at
->
+> --
 > -- <https://github.com/massysett/rainbox/blob/master/lib/Rainbox/Tutorial.lhs>
 
 > module Rainbox.Tutorial where
