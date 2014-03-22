@@ -31,8 +31,7 @@ library
     , Rainbox.Box
     , Rainbox.Box.Primitives
     , Rainbox.Array2d
-    --, Rainbox.Tutorial
-    , Rainbox.Tutorial.Names
+    , Rainbox.Tutorial
 
   build-depends:
       base >=4.5.0.0 && < 5

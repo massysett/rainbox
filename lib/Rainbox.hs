@@ -2,7 +2,7 @@ module Rainbox
   ( -- * Backgrounds
     Background(..)
   , defaultBackground
-  , backgroundFromTextSpec
+  , backgroundFromChunk
   , same
 
   -- * Alignment
@@ -26,6 +26,10 @@ module Rainbox
   , gridByCols
   , boxCells
   , glueBoxes
+
+  -- * Rendering
+  , render
+  , printBox
   ) where
 
 import Rainbox.Box

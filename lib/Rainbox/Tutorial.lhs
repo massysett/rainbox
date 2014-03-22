@@ -17,27 +17,21 @@ hyperlinked source in Haddock.  You're better off viewing it from a
 text editor or through [the Gihub
 website](http://www.github.com/massysett/rainbox).
 
-The Rainbox model
-=================
+A grid of boxes
+===============
 
-Rainbox gives you functions to create `Box`es and glue them
-together.  All `Box`es are rectangular on your screen.  When you
-create many `Box`es, you must specify a background color; this will
-be used to insert necessary white space to make your text fill up a
-`Box`.  When gluing `Box`es together you can specify how they are
-justified.
+`Rainbox` is built on `Rainbox.Box`, which contains the building
+blocks to create rectangular boxes of text.  Each box is justified
+as appropriate and is filled in with a background color to make it
+rectangular.
 
-For maximum flexibility, use the `Rainbox` module or the
-`Rainbox.Reader` module, which is similar to `Rainbox` but wraps
-many of its functions in a `Reader` monad.  
-
-Everything you need from the `rainbox` package is in the `Rainbox`
-module.  Alternatively, you can use the `Rainbox.Reader` module,
-which has the same purpose as `Rainbox` but wraps many of its
-functions so that they are used from a `Reader` monad.  In this file
-we'll only discuss the `Rainbox` module.
-
-For the examples, let's get the module and imports started:
+If your needs are complex, use `Rainbox.Box`.  Using it you can
+patch boxes together into sort of a crazy quilt.  For simpler needs
+you can use `Rainbox`, which only allows you to create grids of
+boxes, like a spreadsheet.  This tutorial will show you how to use
+the `Rainbox` module.  Everything you need from this package will be
+available from the `Rainbox` module.  You will also need to import
+packages from `rainbow`:
 
 > {-# LANGUAGE OverloadedStrings #-}
 > -- | If you are viewing this module in Haddock, note
@@ -51,8 +45,8 @@ For the examples, let's get the module and imports started:
 > module Rainbox.Tutorial where
 >
 > import System.Console.Rainbow
-> import qualified Data.Text as X
 > import Data.Monoid
+> import Data.String
 > import Rainbox
 
 
@@ -62,31 +56,18 @@ Making a table of name data
 For this example, we'll print a table of names, addresses, and
 account balances.  This type holds the data we're interested in:
 
-> data Record a = Record
->   { firstName :: a
->   , lastName :: a
->   , address :: [a]
->   , phone :: a
->   , email :: a
->   , balance :: a
+> data Record = Record
+>   { firstName :: String
+>   , lastName :: String
+>   , address :: [String]
+>   , phone :: String
+>   , email :: String
+>   , balance :: String
 >   } deriving Show
-
-To make it easy to work with a `Record`, let's make it a `Functor`:
-
-> instance Functor Record where
->   fmap f r = Record
->     { firstName = f (firstName r)
->     , lastName = f (lastName r)
->     , address = map f . address $ r
->     , phone = f (phone r)
->     , email = f (email r)
->     , balance = f (balance r)
->     }
-> 
 
 And let's make a list of some sample data:
 
-> records :: [Record String]
+> records :: [Record]
 > records =
 >   [ Record
 >       { firstName = "Nell"
@@ -124,75 +105,57 @@ And let's make a list of some sample data:
 >       , email = "lower@rhyta.com"
 >       , balance = "100,451.05"
 >       }
+>
+>   , Record
+>       { firstName = "Vip"
+>       , lastName = "Vipperman"
+>       , address = [ "10000 Smiley Lane", "Denver, CO 80266" ]
+>       , phone = "303-555-1212"
+>       , email = "vipperman@rhyta.com"
+>       , balance = "301.00"
+>       }
 >   ]
 
-Apply foreground colors
-=======================
+Building each row of cells
+==========================
 
-First, we'll apply some colors to the text and change it to Rainbow
-`Chunk`s.  For foreground colors, the last name will be green and
-the account balance will be yellow; we'll leave everything else as
-the default foreground color.
+`Rainbox` works with rows of `Cell`s.  You build one list of `Cell`
+for each row in your grid.  Here we will make the last name bold,
+and the rest of the text will be plain.  We will also alternate each
+row--every even row (starting with the first row) will be the
+default color, and the odd rows will be yellow.  We'll make a
+function that takes a `Record` and returns another function that,
+when applied to a `Chunk` that contains the color for the row,
+returns a list of `Cell`.  First let's make a small function that
+will make a function that returns a `Cell` with our desired
+defaults:
 
-> coloredForeground :: [Record Chunk]
-> coloredForeground
->   = map colorForeground
->   . map (fmap (fromText . X.pack))
->   $ records
+> cell :: [Chunk] -> Chunk -> Cell
+> cell cks back = Cell brs left top (backgroundFromChunk back)
 >   where
->     colorForeground r = r { lastName = lastName r <> f_green
->                           , balance = balance r <> f_yellow
->                           }
-
-Apply background colors
-=======================
-
-The `rainbow` library allows you to set the background color of each
-`Chunk`.  `rainbox` does not give you any way to override what
-`rainbow` does.  Any `Box` you create with `rainbox` envelops the
-`Chunk` and whatever colors the `Chunk` came with, although the
-`Box` must have its own background color for any necessary fill
-text.  So, we have to decide what background colors to use for the
-`Chunk`s before putting them into a `Box`.
-
-We will alternate each record in the list--odd rows will have a
-magenta background, and even rows, a default background.
-
-> coloredForeAndBack :: [Record Chunk]
-> coloredForeAndBack
->  = map colorBackground . zip [ (0 :: Int) ..] $ coloredForeground
->  where
->    colorBackground (i, r)
->      | odd i = fmap (<> b_magenta) r
->      | otherwise = fmap (<> b_default) r
-
-Create `Box`es
-==============
-
-To put text into a `Box`, just use the `chunk` function:
-
-> recordBoxes :: [Record Box]
-> recordBoxes = map (fmap chunk) coloredForeAndBack
-
-Create columns
-==============
-
-To format each column, you have to calculate which row in each
-column is the widest.  Then you can size each box accordingly.
-First let's make a `Record` where each member is a list of all the
-`Box` for that column of data.
-
-> unformattedColumns :: Record [Box]
-> unformattedColumns = foldr f epty recordBoxes
->   where
->     epty = Record [] [] [] [] [] []
->     f r acc = Record
->       { firstName = firstName r : firstName acc
->       , lastName = lastName r : lastName acc
->       , address = address r : address acc
->       , phone = phone r : phone acc
->       , email = email r : email acc
->       , balance = balance r : balance acc
->       }
+>     brs = map Bar . map ((:[]) . (<> back)) $ cks
 
 
+> recordToCells :: Record -> Chunk -> [Cell]
+> recordToCells r ck = map ($ ck) $
+>   [ cell . (:[]) . fromString . firstName $ r
+>   , cell . (:[]) $ (fromString (lastName r) <> bold)
+>   , cell . map fromString . address $ r
+>   , cell . (:[]) . fromString . phone $ r
+>   , cell . (:[]) . fromString . email $ r
+>   , cell . (:[]) . fromString . balance $ r
+>   ]
+
+Zipping to get rows of cells
+============================
+
+> cellRows :: [[Cell]]
+> cellRows = zipWith recordToCells records (cycle [mempty, f_yellow])
+
+Printing the cells
+==================
+
+To see the result, run this function in ghci:
+
+> printSampleBox :: IO ()
+> printSampleBox = printBox . gridByRows $ cellRows

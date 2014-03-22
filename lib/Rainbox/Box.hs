@@ -3,7 +3,7 @@ module Rainbox.Box
   ( -- * Backgrounds
     Background(..)
   , defaultBackground
-  , backgroundFromTextSpec
+  , backgroundFromChunk
   , same
   
   -- * Height and columns
@@ -84,8 +84,8 @@ import Rainbox.Box.Primitives
   )
 import qualified System.IO as IO
 
-backgroundFromTextSpec :: TextSpec -> B.Background
-backgroundFromTextSpec ts = B.Background bk8 bk256
+backgroundFromChunk :: Chunk -> B.Background
+backgroundFromChunk (Chunk ts _) = B.Background bk8 bk256
   where
     bk8 = case getLast . background8 . style8 $ ts of
       Nothing -> c8_default
