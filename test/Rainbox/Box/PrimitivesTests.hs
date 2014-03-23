@@ -22,23 +22,49 @@ genHeight :: Gen Height
 genHeight = fmap Height $ frequency [(3, nonNeg), (1, neg)]
   where
     nonNeg = fmap getNonNegative arbitrarySizedIntegral
-    neg = fmap (negate . getPositive) arbitrarySizedIntegral
+    neg = fmap (negate . abs) arbitrarySizedIntegral
 
 genWidth :: Gen Width
 genWidth = fmap Width $ frequency [(3, nonNeg), (1, neg)]
   where
-    nonNeg = fmap getNonNegative arbitrarySizedIntegral
-    neg = fmap (negate . getPositive) arbitrarySizedIntegral
+    nonNeg = fmap abs arbitrarySizedIntegral
+    neg = fmap (negate . abs) arbitrarySizedIntegral
 
 genBackground :: Gen Background
 genBackground = liftM2 Background G.colors8 G.colors256
 
 -- | Generates blank Box.
-genBox :: Gen Box
-genBox = liftM3 blank genBackground rw cl
+genBlankBox :: Gen Box
+genBlankBox = liftM3 blank genBackground rw cl
   where
-    rw = fmap (Height . getNonNegative) arbitrarySizedIntegral
-    cl = fmap (Width . getNonNegative) arbitrarySizedIntegral
+    rw = fmap (Height . abs) arbitrarySizedIntegral
+    cl = fmap (Width . abs) arbitrarySizedIntegral
+
+-- | Generates a box using chunks.
+genChunkBox :: Gen Box
+genChunkBox = fmap chunks $ listOf genChunk
+
+-- | Generates a box using catH.
+genCatHBox :: Gen Box
+genCatHBox = sized $ \s -> do
+  bk <- genBackground
+  av <- genAlignVert
+  bs <- listOf (resize (s `div` 2) genBox)
+  return $ catH bk av bs
+
+-- | Generates a box using catV.
+genCatVBox :: Gen Box
+genCatVBox = sized $ \s -> do
+  bk <- genBackground
+  ah <- genAlignHoriz
+  bs <- listOf (resize (s `div` 2) genBox)
+  return $ catV bk ah bs
+
+-- | Generates a random box.
+genBox :: Gen Box
+genBox = oneof [ genBlankBox, genCatHBox, genCatVBox, genChunkBox ]
+
+
 
 -- # Alignment
 
@@ -79,8 +105,8 @@ instance Arbitrary Inputs where
     <*> genWidth
     <*> genAlignVert
     <*> genAlignHoriz
-    <*> listOf genBox
-    <*> genBox
+    <*> listOf genBlankBox
+    <*> genBlankBox
     <*> genChunk
 
 tests :: TestTree
