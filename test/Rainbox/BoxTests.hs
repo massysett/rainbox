@@ -6,11 +6,7 @@ import qualified Data.Text as X
 import Test.Tasty.QuickCheck (testProperty)
 import Test.Tasty
 import System.Console.Rainbow
-import Test.QuickCheck hiding (maxSize, resize)
-import qualified Test.QuickCheck as Q
-
-maxSize :: Int -> Q.Gen a -> Q.Gen a
-maxSize s g = Q.sized $ \i -> Q.resize (min s i) g
+import Test.QuickCheck hiding (resize)
 
 tests :: TestTree
 tests = testGroup "RainboxTests"
@@ -189,7 +185,6 @@ tests = testGroup "RainboxTests"
   -- Box.padHoriz.
   , testGroup "sepH"
     [ testProperty "result has correct width" $
-      maxSize 50 $
       forAll arbitrarySizedIntegral $ \len ->
       forAll arbitrary $ \i ->
       let tgt = (sum . map width $ bs)
@@ -201,7 +196,6 @@ tests = testGroup "RainboxTests"
 
   , testGroup "sepV"
     [ testProperty "result has correct height" $
-      maxSize 50 $
       forAll arbitrarySizedIntegral $ \len ->
       forAll arbitrary $ \i ->
       let tgt = (sum . map height $ bs)
