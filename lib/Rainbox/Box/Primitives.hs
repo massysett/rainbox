@@ -110,12 +110,14 @@ instance HasWidth Nibble where
 -- tabs, as rainbox assumes that each character in a 'Bar' takes up
 -- one screen column and that each character does not create
 -- newlines.  Leave newline handling up to rainbox.  However,
--- rainbox does nothing to enforce this practice.  Similarly, use of
--- combining characters will create unexpected result, as rainbow
+-- rainbox will /not/ check to make sure that your inputs do not
+-- contain newlines, tabs, or other spurious characters.  Similarly, use of
+-- combining characters will create unexpected results, as Rainbox
 -- will see something that takes up (for instance) two characters
 -- and think it takes up two screen columns, when in reality it will
 -- take up only one screen column.  So, if you need accented
 -- characters, use a single Unicode code point, not two code points.
+-- For example, for é, use U+00E9, not U+0065 and U+0301.
 newtype Bar = Bar { unBar :: [Chunk] }
   deriving (Eq, Show)
 

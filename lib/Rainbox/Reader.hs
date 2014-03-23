@@ -162,7 +162,7 @@ resize r c bx = do
   b <- asks background
   h <- asks alignH
   v <- asks alignV
-  return $ R.resize b r c h v bx
+  return $ R.resize b r c v h bx
 
 resizeH
   :: Monad m => Int

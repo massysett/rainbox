@@ -1,4 +1,35 @@
 {-# LANGUAGE OverloadedStrings #-}
+-- | Working with 'Box'.
+--
+-- A 'Box' is a rectangular block of text.  You can paste 'Box'
+-- together to create new rectangles, and you can grow or reduce
+-- existing 'Box' to create new 'Box'es.
+--
+-- There are only six primitive functions that make a 'Box':
+--
+-- * 'B.blank' - formats a blank box with nothing but a (possibly)
+-- colorful background.  Useful to paste to other 'Box' to provide
+-- white space.
+--
+-- * 'B.chunks' - Makes a box out of Rainbow 'Chunk'.
+--
+-- * 'B.catH' - paste 'Box' together horizontally
+--
+-- * 'B.catV' - paste 'Box' together vertically
+--
+-- * 'B.viewH' - view a 'Box', keeping the same height but possibly
+-- trimming the width
+--
+-- * 'B.viewV' - view a 'Box', keeping the same width but possibly
+-- trimming the height
+--
+-- The other functions use these building blocks to do other useful
+-- things.
+--
+-- There are many crude diagrams in the Haddock documentation.  A
+-- dash means a character with data; a period means a blank
+-- character.  When you print your 'Box', the blank characters will
+-- have the appropriate background color.
 module Rainbox.Box
   ( -- * Backgrounds
     Background(..)
@@ -218,11 +249,11 @@ resize
   :: Background
   -> Height
   -> Width
-  -> Align Horiz
   -> Align Vert
+  -> Align Horiz
   -> Box
   -> Box
-resize bk h w ah av
+resize bk h w av ah
   = resizeH bk (unWidth w) ah
   . resizeV bk (unHeight h) av
 
@@ -283,6 +314,8 @@ punctuateH bk a sep = B.catH bk a . intersperse sep
 punctuateV :: Background -> Align Horiz -> Box -> [Box] -> Box
 punctuateV bk a sep = B.catV bk a . intersperse sep
 
+-- | Convert a 'Box' to Rainbow 'Chunk's.  You can then print it
+-- using 'putChunks' or the like.
 render :: Box -> [Chunk]
 render bx = case unBox bx of
   B.NoHeight _ -> []

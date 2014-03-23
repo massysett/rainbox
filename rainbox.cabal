@@ -20,8 +20,9 @@ maintainer:          omari@smileystation.com
 copyright:           2014 Omari Norman
 category:            Text
 build-type:          Simple
-extra-source-files:  README.md
+extra-source-files:  README.md, sunlight-test.hs
 cabal-version:       >=1.10
+tested-with: GHC ==7.4.1, GHC ==7.6.3
 
 library
   ghc-options: -Wall

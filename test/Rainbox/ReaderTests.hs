@@ -49,7 +49,7 @@ tests = testGroup "ReaderTests"
 
   , testProperty "resize" $ \(SpecPair i s) ->
     let p = R.resize (iBackground i) (iHeight i) (iWidth i)
-          (iHoriz i) (iVert i) (iBox i)
+          (iVert i) (iHoriz i) (iBox i)
     in testEq s (resize (iHeight i) (iWidth i) (iBox i)) p
 
   , testProperty "resizeH" $ \(SpecPair i s) ->

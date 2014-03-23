@@ -148,12 +148,12 @@ tests = testGroup "RainboxTests"
       let tgt = max 0 . unHeight . iHeight $ i
       in (== tgt) . height $ resize (iBackground i)
             (iHeight i) (iWidth i)
-            (iHoriz i) (iVert i) (iBox i)
+            (iVert i) (iHoriz i) (iBox i)
 
     , testProperty "result has desired width" $ \i ->
       let tgt = max 0 . unWidth . iWidth $ i
       in (== tgt) . width $ resize (iBackground i)
-            (iHeight i) (iWidth i) (iHoriz i) (iVert i)
+            (iHeight i) (iWidth i) (iVert i) (iHoriz i)
             (iBox i)
     ]
 
