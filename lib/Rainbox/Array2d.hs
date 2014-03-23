@@ -21,7 +21,6 @@ module Rainbox.Array2d
   ) where
 
 import Data.Array
-import Data.List (transpose)
 
 -- * Tables
 
@@ -188,14 +187,19 @@ rows ay = map getRow $ range (minRow, maxRow)
 arrayByRows
   :: [[a]]
   -> Array (Int, Int) a
-arrayByRows ls = listArray ((0,0), (colMax, rowMax)) ls'
+arrayByRows ls = array ((0,0), (colMax, rowMax)) $ indexRows ls
   where
-    ls' = concat transposed
-    transposed = transpose ls
-    colMax = case transposed of
-      [] -> 0
-      x:_ -> length x
-    rowMax = length transposed
+    rowMax = length ls - 1
+    colMax = case ls of
+      [] -> -1
+      x:_ -> length x - 1
+
+indexRows :: [[a]] -> [((Int, Int),a)]
+indexRows = concat . map f . zip [0 ..]
+  where
+    f (rw, ls) = map g $ zip [0 ..] ls
+      where
+        g (cl, a) = ((cl, rw), a)
 
 -- | Generate a two-dimensional array from a list of columns.  Each
 -- column must be of equal length; otherwise, the generated array
@@ -205,8 +209,8 @@ arrayByCols
   -> Array (Int, Int) a
 arrayByCols ls = listArray ((0,0), (colMax, rowMax)) . concat $ ls
   where
-    colMax = length ls
+    colMax = length ls - 1
     rowMax = case ls of
-      [] -> 0
-      x:_ -> length x
+      [] -> -1
+      x:_ -> length x - 1
 

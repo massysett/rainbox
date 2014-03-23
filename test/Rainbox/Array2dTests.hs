@@ -2,6 +2,7 @@ module Rainbox.Array2dTests where
 
 import Test.Tasty
 import Test.QuickCheck
+import Test.Tasty.QuickCheck (testProperty)
 import Data.Array
 import Rainbox.Array2d
 
@@ -24,6 +25,28 @@ genBounds = do
       (minR, maxR) | y < z = (y, z)
                    | otherwise = (z, y)
   return ((minC, minR), (maxC, maxR))
+
+genTable :: Gen (Table (Int, [(Int, Int)]) (Int, [(Int, Int)]) Int Int Int)
+genTable = do
+  ay <- genArray
+  return $ table (,) (,) ay
+
+type LabelF
+  = (Int, [(Int, Int)])
+  -> (Int, [(Int, Int)])
+  -> Int -> Int -> Int -> Int
+
+type ChangeLabelF
+  = (Int, [(Int, Int)])
+  -> Int
+  -> [((Int, [(Int, Int)]), Int, Int)]
+  -> Int
+
+genLabelF :: Gen LabelF
+genLabelF = arbitrary
+
+genChangeLabelF :: Gen ChangeLabelF
+genChangeLabelF = arbitrary
 
 -- # Properties
 
@@ -80,22 +103,117 @@ propGenRebuildByCol ay = ay == ay'
         g (rw, a) = ((cl, rw), a)
 
 -- | Round-tripping through rows and arrayByRows
+{-
 propRoundTripRows
   :: Eq a
   => Array (Int, Int) a
   -> Bool
-propRoundTripRows ay = ay' == ay
+-}
+propRoundTripRows ay = printTestCase ("new array: " ++ show ay' ++ "\nrows: " ++ show (rows ay)) $ sameShape ay ay'
   where
     ay' = arrayByRows . rows $ ay
 
 -- | Round-tripping through columns and arrayByCols
 propRoundTripCols
-  :: Eq a
+  :: (Eq a, Show a)
   => Array (Int, Int) a
   -> Bool
-propRoundTripCols ay = ay' == ay
+propRoundTripCols ay = sameShape ay ay'
   where
     ay' = arrayByCols . cols $ ay
+
+-- | True if both arrays have the same shape; that is, the same
+-- number of rows and the same number of columns and the same
+-- elements.
+
+sameShape
+  :: (Ix col, Ix row, Eq a)
+  => Array (col, row) a
+  -> Array (col, row) a
+  -> Bool
+sameShape x y = rx == ry && cx == cy && ex == ey
+  where
+    ((minCx, minRx), (maxCx, maxRx)) = bounds x
+    ((minCy, minRy), (maxCy, maxRy)) = bounds y
+    rx = rangeSize (minRx, maxRx)
+    ry = rangeSize (minRy, maxRy)
+    cx = rangeSize (minCx, maxCx)
+    cy = rangeSize (minCy, maxCy)
+    ex = elems x
+    ey = elems y
+
+-- # mapTable properties
+
+-- | mapTable does not change lCols
+mapTableNoChangeCols
+  :: (Ix col, Ix row, Eq lCol)
+  => (lCol -> lRow -> col -> row -> a -> b)
+  -> Table lCol lRow col row a
+  -> Bool
+mapTableNoChangeCols f t = lCols t == lCols t'
+  where
+    t' = mapTable f t
+
+-- | mapTable does not change lRows
+mapTableNoChangeRows
+  :: (Ix col, Ix row, Eq lRow)
+  => (lCol -> lRow -> col -> row -> a -> b)
+  -> Table lCol lRow col row a
+  -> Bool
+mapTableNoChangeRows f t = lRows t == lRows t'
+  where
+    t' = mapTable f t
+
+-- | mapTable allows rebuild of original array
+mapTableRebuildNoIndices
+  :: (Ix col, Ix row, Eq a)
+  => Table lCol lRow col row a
+  -> Bool
+mapTableRebuildNoIndices tbl = cells tbl == ay'
+  where
+    ay' = listArray (bounds . cells $ tbl) . elems . cells
+        . mapTable f $ tbl
+    f _ _ _ _ a = a
+
+mapTableRebuildWithIndices
+  :: (Ix col, Ix row, Eq a)
+  => Table lCol lRow col row a
+  -> Bool
+mapTableRebuildWithIndices tbl = cells tbl == ay'
+  where
+    ay' = array (bounds . cells $ tbl) . elems . cells
+      . mapTable f $ tbl
+    f _ _ cl rw a = ((cl, rw), a)
+
+-- # labelRows and labelCols properties
+
+-- | labelCols allows rebuild of original array
+propLabelColsRebuild
+  :: (Ix col, Ix row, Eq a)
+  => Array (col, row) a
+  -> Bool
+propLabelColsRebuild ay = ay == ay'
+  where
+    ay' = array (bounds ay) . concat . elems
+      . labelCols f $ ay
+    f cl ls = map g ls
+      where
+        g (rw, a) = ((cl, rw), a)
+
+-- | labelRows allows rebuild of original array
+propLabelRowsRebuild
+  :: (Ix col, Ix row, Eq a)
+  => Array (col, row) a
+  -> Bool
+propLabelRowsRebuild ay = ay == ay'
+  where
+    ay' = array (bounds ay) . concat . elems
+      . labelRows f $ ay
+    f rw ls = map g ls
+      where
+        g (cl, a) = ((cl, rw), a)
+
+-- # mapRowLabels properties
 
 -- | mapRowLabels does not change column labels
 propMapRowLabelsCols
@@ -144,6 +262,130 @@ propMapRowLabelsRelabel t = t == t'
   where
     t' = mapRowLabels (\r _ _ -> r) t
 
+-- # mapColLabels properties
+
+-- | mapColLabels does not change row labels
+propMapColLabelsCols
+  :: (Ix col, Ix row, Eq lRow)
+  => (lCol -> col -> [(lRow, row, a)] -> lCol')
+  -> Table lCol lRow col row a
+  -> Bool
+propMapColLabelsCols f tb = lbls == lbls'
+  where
+    lbls = lRows tb
+    tb' = mapColLabels f tb
+    lbls' = lRows tb'
+
+-- | mapColLabels does not change cells
+propMapColLabelsCells
+  :: (Ix col, Ix row, Eq a, Eq lCol)
+  => (lCol -> col -> [(lRow, row, a)] -> lCol')
+  -> Table lCol lRow col row a
+  -> Bool
+propMapColLabelsCells f tb = ay == ay'
+  where
+    ay = cells tb
+    tb' = mapColLabels f tb
+    ay' = cells tb'
+
+-- | mapColLabels permits reconstruction of original array
+propMapColLabelsRebuild
+  :: (Ix col, Ix row, Eq a)
+  => Table lCol lRow col row a
+  -> Bool
+propMapColLabelsRebuild t = ay == ay'
+  where
+    ay = cells t
+    ay' = array (bounds ay) . concat . elems
+      . lCols . mapColLabels f $ t
+    f _ cl ls = map g ls
+      where
+        g (_, rw, a) = ((cl, rw), a)
+
+-- | mapColLabels gives the original row labels
+propMapColLabelsRelabel
+  :: (Ix col, Ix row, Eq a, Eq lRow, Eq lCol)
+  => Table lCol lRow col row a
+  -> Bool
+propMapColLabelsRelabel t = t == t'
+  where
+    t' = mapColLabels (\r _ _ -> r) t
+
 tests :: TestTree
-tests = testGroup "Array2d" []
+tests = testGroup "Array2d"
+  [ testProperty "bounds of columns in Table matches those of cells" $
+    forAll genTable $
+    propTableColsBounds
+
+  , testProperty "bounds of rows in Table matches those of cells" $
+    forAll genTable $
+    propTableRowsBounds
+
+  , testProperty "propGenRebuildByRow" $
+    forAll genArray propGenRebuildByRow
+
+  , testProperty "propGenRebuildByCol" $
+    forAll genArray propGenRebuildByCol
+
+  , testProperty "propRoundTripRows" $
+    forAll genArray propRoundTripRows
+
+  , testProperty "propRoundTripCols" $
+    forAll genArray propRoundTripCols
+
+  , testProperty "mapTableNoChangeCols" $
+    forAll genLabelF $ \f ->
+    forAll genTable $ \t ->
+    mapTableNoChangeCols f t
+
+  , testProperty "mapTableNoChangeRows" $
+    forAll genLabelF $ \f ->
+    forAll genTable $ \t ->
+    mapTableNoChangeRows f t
+
+  , testProperty "mapTableRebuildNoIndices" $
+    forAll genTable mapTableRebuildNoIndices
+
+  , testProperty "mapTableRebuildWithIndices" $
+    forAll genTable mapTableRebuildWithIndices
+
+  , testProperty "propLabelColsRebuild" $
+    forAll genArray propLabelColsRebuild
+
+  , testProperty "propLabelRowsRebuild" $
+    forAll genArray propLabelRowsRebuild
+
+  , testProperty "propMapRowLabelsCols" $
+    forAll genChangeLabelF $ \f ->
+    forAll genTable $ \t ->
+    propMapRowLabelsCols f t
+
+  , testProperty "propMapRowLabelsCells" $
+    forAll genChangeLabelF $ \f ->
+    forAll genTable $ \t ->
+    propMapRowLabelsCells f t
+
+  , testProperty "propMapRowLabelsRebuild" $
+    forAll genTable propMapRowLabelsRebuild
+
+  , testProperty "propMapRowLabelsRelabel" $
+    forAll genTable propMapRowLabelsRelabel
+
+  , testProperty "propMapColLabelsCols" $
+    forAll genChangeLabelF $ \f ->
+    forAll genTable $ \t ->
+    propMapColLabelsCols f t
+
+  , testProperty "propMapColLabelsCells" $
+    forAll genChangeLabelF $ \f ->
+    forAll genTable $ \t ->
+    propMapColLabelsCells f t
+
+  , testProperty "propMapColLabelsRebuild" $
+    forAll genTable propMapColLabelsRebuild
+
+  , testProperty "propMapColLabelsRelabel" $
+    forAll genTable propMapColLabelsRelabel
+
+  ]
 
