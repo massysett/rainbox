@@ -4,6 +4,7 @@ module Rainbox.Box
     Background(..)
   , defaultBackground
   , backgroundFromChunk
+  , backgroundToTextSpec
   , same
   
   -- * Height and columns

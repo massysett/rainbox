@@ -9,6 +9,7 @@ import System.Console.Rainbow
 import qualified Data.Text as X
 import qualified Test.Rainbow.Generators as G
 import Rainbox.Box.Primitives
+import Rainbox.Box (backgroundToTextSpec)
 
 genText :: Gen X.Text
 genText = fmap X.pack $ listOf c
@@ -63,6 +64,24 @@ genCatVBox = sized $ \s -> do
 -- | Generates a random box.
 genBox :: Gen Box
 genBox = oneof [ genBlankBox, genCatHBox, genCatVBox, genChunkBox ]
+
+genChunkLen :: Int -> Gen Chunk
+genChunkLen l = do
+  bk <- genBackground
+  let ts = backgroundToTextSpec bk
+  txt <- fmap X.pack $ vectorOf l (elements ['0'..'Z'])
+  return $ Chunk ts txt
+
+-- | Generates a box of text; its horizontal and vertical size
+-- depends on the size parameter.
+genTextBox :: Gen Box
+genTextBox = do
+  w <- fmap abs arbitrarySizedIntegral
+  h <- fmap abs arbitrarySizedIntegral
+  cks <- vectorOf h (genChunkLen w)
+  let bxs = map (chunks . (:[])) cks
+  bk <- genBackground
+  return $ catV bk left bxs
 
 
 
