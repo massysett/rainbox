@@ -5,7 +5,6 @@
 module Main where
 
 import Visual
-import Visual.Reader
 
 main :: IO ()
-main = Visual.tests >> Visual.Reader.tests
+main = Visual.tests

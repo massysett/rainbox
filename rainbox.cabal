@@ -63,7 +63,6 @@ Test-Suite rainbox-visual
 
   other-modules:
       Visual
-    , Visual.Reader
 
 
 Test-Suite rainbox-test
