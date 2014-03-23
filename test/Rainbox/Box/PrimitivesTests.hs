@@ -65,9 +65,8 @@ genCatVBox = sized $ \s -> do
 genBox :: Gen Box
 genBox = oneof [ genBlankBox, genCatHBox, genCatVBox, genChunkBox ]
 
-genChunkLen :: Int -> Gen Chunk
-genChunkLen l = do
-  bk <- genBackground
+genChunkLen :: Background -> Int -> Gen Chunk
+genChunkLen bk l = do
   let ts = backgroundToTextSpec bk
   txt <- fmap X.pack $ vectorOf l (elements ['0'..'Z'])
   return $ Chunk ts txt
@@ -78,10 +77,11 @@ genTextBox :: Gen Box
 genTextBox = do
   w <- fmap abs arbitrarySizedIntegral
   h <- fmap abs arbitrarySizedIntegral
-  cks <- vectorOf h (genChunkLen w)
-  let bxs = map (chunks . (:[])) cks
   bk <- genBackground
-  return $ catV bk left bxs
+  cks <- vectorOf h (genChunkLen bk w)
+  let bxs = map (chunks . (:[])) cks
+  bk' <- genBackground
+  return $ catV bk' left bxs
 
 
 
