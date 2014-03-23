@@ -103,13 +103,11 @@ propGenRebuildByCol ay = ay == ay'
         g (rw, a) = ((cl, rw), a)
 
 -- | Round-tripping through rows and arrayByRows
-{-
 propRoundTripRows
   :: Eq a
   => Array (Int, Int) a
   -> Bool
--}
-propRoundTripRows ay = printTestCase ("new array: " ++ show ay' ++ "\nrows: " ++ show (rows ay)) $ sameShape ay ay'
+propRoundTripRows ay = sameShape ay ay'
   where
     ay' = arrayByRows . rows $ ay
 

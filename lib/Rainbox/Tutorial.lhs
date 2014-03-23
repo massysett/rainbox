@@ -44,9 +44,10 @@ packages from `rainbow`:
 
 > module Rainbox.Tutorial where
 >
-> import System.Console.Rainbow
+> import Data.List (intersperse)
 > import Data.Monoid
 > import Data.String
+> import System.Console.Rainbow
 > import Rainbox
 
 
@@ -152,10 +153,22 @@ Zipping to get rows of cells
 > cellRows :: [[Cell]]
 > cellRows = zipWith recordToCells records (cycle [mempty, f_yellow])
 
+Adding white space between columns
+==================================
+
+If we print the table like it is now, there will be no whitespace,
+as `Rainbox` does not add whitespace for you.  Fortunately this is
+easy to add.  The string literal, " ", becomes a Cell due to the use
+of the Overloaded Strings extension; the cell will have the default
+background color.
+
+> spacedOutCells :: [[Cell]]
+> spacedOutCells = map (intersperse " ") cellRows
+
 Printing the cells
 ==================
 
 To see the result, run this function in ghci:
 
 > printSampleBox :: IO ()
-> printSampleBox = printBox . gridByRows $ cellRows
+> printSampleBox = printBox . gridByRows $ spacedOutCells
