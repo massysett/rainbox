@@ -200,7 +200,7 @@ class HasWidth a where
   width :: a -> Int
 
 instance HasWidth Bar where
-  width = sum . map (X.length . text) . unBar
+  width = sum . map (sum . map X.length . text) . unBar
 
 instance HasWidth Box where
   width b = case unBox b of
@@ -210,7 +210,7 @@ instance HasWidth Box where
       x:_ -> width x
 
 instance HasWidth Chunk where
-  width = X.length . text
+  width = sum . map X.length . text
 
 -- # Making Boxes
 
@@ -487,12 +487,24 @@ dropChars colsIn = Rod . go colsIn . unRod
            where
              lenX = case unNibble x of
               Left blnk -> numSpaces blnk
-              Right chk -> X.length . text $ chk
+              Right chk -> width chk
              x' = case unNibble x of
               Left blnk -> Nibble . Left $
                 blnk { numSpaces = numSpaces blnk - n }
-              Right chk -> Nibble . Right $ 
-                chk { text = X.drop n . text $ chk }
+              Right chk -> Nibble . Right . dropChunkChars n $ chk
+
+-- | Drops the given number of characters from a Chunk.
+dropChunkChars :: Int -> Chunk -> Chunk
+dropChunkChars n c = c { text = go n (text c) }
+  where
+    go nLeft ls = case ls of
+      [] -> []
+      t:ts
+        | len < nLeft -> go (nLeft - len) ts
+        | len == nLeft -> ts
+        | otherwise -> X.drop nLeft t : ts
+        where
+          len = X.length t
 
 takeChars :: Int -> Rod -> Rod
 takeChars colsIn = Rod . go colsIn . unRod
@@ -510,9 +522,20 @@ takeChars colsIn = Rod . go colsIn . unRod
                   ( numSpaces blnk,
                     Nibble . Left $ blnk { numSpaces = n } )
                 Right chk ->
-                  ( X.length . text $ chk,
-                    Nibble . Right $
-                    chk { text = X.take n . text $ chk } )
+                  ( width chk,
+                    Nibble . Right . takeChunkChars n $ chk)
+
+takeChunkChars :: Int -> Chunk -> Chunk
+takeChunkChars n c = c { text = go n (text c) }
+  where
+    go nLeft ls = case ls of
+      [] -> []
+      t:ts
+        | len < nLeft -> t : go (nLeft - len) ts
+        | len == nLeft -> [t]
+        | otherwise -> [X.take nLeft t]
+        where
+          len = X.length t
 
 --
 -- # Helpers

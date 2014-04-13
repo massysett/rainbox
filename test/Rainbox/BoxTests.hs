@@ -35,7 +35,7 @@ tests = testGroup "RainboxTests"
       (== 1) . height . chunk . iChunk
 
     , testProperty "makes Box as wide as characters in chunk" $ \i ->
-      let cs = X.length . text . iChunk $ i
+      let cs = sum . map X.length . text . iChunk $ i
       in (== cs) . width . chunk . iChunk $ i
     ]
 

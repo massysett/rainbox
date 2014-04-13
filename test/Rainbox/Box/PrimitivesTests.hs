@@ -17,7 +17,7 @@ genText = fmap X.pack $ listOf c
     c = elements ['0'..'Z']
 
 genChunk :: Gen Chunk
-genChunk = genText >>= G.chunk
+genChunk = listOf genText >>= G.chunk
 
 genHeight :: Gen Height
 genHeight = fmap Height $ frequency [(3, nonNeg), (1, neg)]
@@ -69,7 +69,7 @@ genChunkLen :: Background -> Int -> Gen Chunk
 genChunkLen bk l = do
   let ts = backgroundToTextSpec bk
   txt <- fmap X.pack $ vectorOf l (elements ['0'..'Z'])
-  return $ Chunk ts txt
+  return $ Chunk ts [txt]
 
 -- | Generates a box of text; its horizontal and vertical size
 -- depends on the size parameter.
@@ -155,7 +155,7 @@ tests = testGroup "BoxTests"
 
     , testProperty "makes Box with cols == number of characters" $ \i ->
       let cks = iChunks i
-          nChars = sum . map X.length . map text $ cks
+          nChars = sum . map X.length . concat . map text $ cks
       in (== nChars) . width $ chunks cks
     ]
 

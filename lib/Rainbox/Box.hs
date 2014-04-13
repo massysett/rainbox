@@ -329,7 +329,7 @@ renderRod = map toChunk . B.unRod
     toChunk = either spcToChunk id . B.unNibble
     spcToChunk ss =
       Chunk (backgroundToTextSpec (B.spcBackground ss))
-            (X.replicate (B.numSpaces ss) (X.singleton ' '))
+            [X.replicate (B.numSpaces ss) (X.singleton ' ')]
 
 -- | Prints a Box to standard output.  If standard output is not a
 -- terminal, no colors are used.  Otherwise, colors are used if your

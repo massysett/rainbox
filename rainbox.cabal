@@ -2,7 +2,7 @@
 -- documentation, see http://haskell.org/cabal/users-guide/
 
 name:                rainbox
-version:             0.2.0.0
+version:             0.4.0.0
 synopsis:            Two-dimensional box pretty printing, with colors
 description:         
   Prints boxes in two dimensions, with colors.  Boxes are
@@ -20,9 +20,9 @@ maintainer:          omari@smileystation.com
 copyright:           2014 Omari Norman
 category:            Text
 build-type:          Simple
-extra-source-files:  README.md, sunlight-test.hs
+extra-source-files:  README.md, sunlight-test.hs, changelog
 cabal-version:       >=1.10
-tested-with: GHC ==7.4.1, GHC ==7.6.3
+tested-with: GHC ==7.4.1, GHC ==7.6.3, GHC ==7.8.2
 
 source-repository head
   type: git
@@ -40,7 +40,7 @@ library
 
   build-depends:
       base >=4.5.0.0 && < 5
-    , rainbow >= 0.12.0.0
+    , rainbow >= 0.14.0.0 && < 0.15
     , text >= 0.11.3.1
     , transformers >= 0.3.0.0
     , array >= 0.4.0.1

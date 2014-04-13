@@ -1,0 +1,6 @@
+0.4.0.0
+
+  * update for newer version of rainbow, where each Chunk has a list of Text
+  rather than a single Text
+
+  * test with GHC 7.8.2
