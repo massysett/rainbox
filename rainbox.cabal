@@ -2,7 +2,7 @@
 -- documentation, see http://haskell.org/cabal/users-guide/
 
 name:                rainbox
-version:             0.4.0.0
+version:             0.4.0.1
 synopsis:            Two-dimensional box pretty printing, with colors
 description:         
   Prints boxes in two dimensions, with colors.  Boxes are
