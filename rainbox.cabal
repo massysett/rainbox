@@ -60,7 +60,7 @@ Test-Suite rainbox-visual
     , tasty-quickcheck >= 0.8
     , array >= 0.4.0.1
     , base >= 4.5.0.0 && < 5
-    , rainbow >= 0.12.0.0
+    , rainbow >= 0.14.0.0 && < 0.15
     , text >= 0.11.3.1
     , transformers >= 0.3.0.0
     , random >= 1.0.0.0
@@ -79,7 +79,7 @@ Executable rainbox-mosaic
       QuickCheck >= 2.6 && < 2.7
     , base >= 4.5.0.0 && < 5
     , random >= 1.0.0.0
-    , rainbow >= 0.12.0.0
+    , rainbow >= 0.14.0.0 && < 0.15
     , text >= 0.11.3.1
     , tasty >= 0.8
     , tasty-quickcheck >= 0.8
@@ -103,7 +103,7 @@ Test-Suite rainbox-test
     , tasty-quickcheck >= 0.8
     , array >= 0.4.0.1
     , base >= 4.5.0.0 && < 5
-    , rainbow >= 0.12.0.0
+    , rainbow >= 0.14.0.0 && < 0.15
     , text >= 0.11.3.1
     , transformers >= 0.3.0.0
     , QuickCheck >= 2.6 && < 2.7
