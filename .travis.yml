@@ -21,6 +21,8 @@ install:
 script:
   - cabal-1.18 configure --enable-tests -v2
   - cabal-1.18 build
+  - dist/build/rainbox-test/rainbox-test
+  - dist/build/rainbox-visual/rainbox-visual
   - cabal-1.18 check
   - cabal-1.18 sdist
   - export SRC_TGZ=$(cabal-1.18 info . | awk '{print $2 ".tar.gz";exit}') ;
@@ -31,6 +33,4 @@ script:
       echo "expected '$SRC_TGZ' not found";
       exit 1;
     fi
-  - dist/build/rainbox-test/rainbox-test
-  - dist/build/rainbox-visual/rainbox-visual
 
