@@ -42,6 +42,9 @@ Tests are also run on Travis:
 and although you can see the output of `rainbox-visual` there, it's
 not formatted quite right on Travis.
 
+At this time, Rainbox is verified to work with GHC versions 7.4.1,
+7.6.3, and 7.8.2.
+
 License
 =======
 
