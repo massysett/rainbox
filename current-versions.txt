@@ -1,7 +1,7 @@
 This package was tested to work with these dependency
 versions and compiler version.
 These are the default versions fetched by cabal install.
-Tested as of: 2014-04-13 15:17:15.577352 UTC
+Tested as of: 2014-04-16 01:31:31.458217 UTC
 Path to compiler: ghc-7.8.2
 Compiler description: 7.8.2
 
@@ -33,7 +33,7 @@ Compiler description: 7.8.2
     transformers-0.3.0.0
     unix-2.7.0.1
 
-/home/massysett/rainbox/sunlight-25915/db:
+/home/massysett/rainbox/sunlight-29827/db:
     QuickCheck-2.6
     ansi-terminal-0.6.1.1
     ansi-wl-pprint-0.6.7.1
@@ -42,7 +42,7 @@ Compiler description: 7.8.2
     optparse-applicative-0.8.0.1
     parsec-3.1.5
     rainbow-0.14.0.0
-    rainbox-0.4.0.0
+    rainbox-0.4.0.2
     random-1.0.1.1
     regex-base-0.93.2
     regex-tdfa-1.2.0
