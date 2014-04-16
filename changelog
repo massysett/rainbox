@@ -1,3 +1,8 @@
+0.4.0.2
+
+  * lower array dependendy to 0.4.0.0; this is the version that shipped
+    with GHC 7.4.1
+
 0.4.0.0
 
   * update for newer version of rainbow, where each Chunk has a list of Text
