@@ -7,8 +7,8 @@ import Rainbox.Box
 import System.Console.Rainbow
 import System.Console.Rainbow.Colors
 import Data.Monoid
-import System.Random
 import Test.QuickCheck.Gen hiding (resize)
+import Test.QuickCheck.Random
 import Rainbox.Box.PrimitivesTests
 import Data.Maybe (fromJust)
 import Data.String
@@ -46,7 +46,7 @@ describe s b = do
 
 testCompound :: String -> (Background -> [Box] -> Box) -> IO ()
 testCompound d f = do
-  g <- newStdGen
+  g <- newQCGen
   let bxs = unGen (replicateM 5 genTextBox) g sizeParam 
       bk = unGen genBackground g sizeParam
   describe d $ f bk bxs
