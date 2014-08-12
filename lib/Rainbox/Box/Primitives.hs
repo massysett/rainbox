@@ -72,11 +72,10 @@ module Rainbox.Box.Primitives
   ) where
 
 import qualified Data.Foldable as F
-import System.Console.Rainbow.Types
+import Rainbow
 import Data.Monoid
 import qualified Data.Text as X
 import Data.String
-import System.Console.Rainbow.Colors
 
 -- # Background
 

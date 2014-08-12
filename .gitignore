@@ -1,2 +1,4 @@
 dist/
 rainbox.cabal
+.cabal-sandbox
+cabal.sandbox.config

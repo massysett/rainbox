@@ -14,7 +14,7 @@ base :: A.Package
 base = A.closedOpen "base" [4,5,0,0] [4,8,0,0]
 
 rainbow :: A.Package
-rainbow = A.closedOpen "rainbow" [0,14,0,0] [0,15]
+rainbow = A.closedOpen "rainbow" [0,16,0,0] [0,17]
 
 terminfo :: A.Package
 terminfo = A.closedOpen "terminfo" [0,3,2] [0,5,0,0]

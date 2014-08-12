@@ -100,9 +100,7 @@ module Rainbox.Box
 import Data.Monoid
 import Data.List (intersperse)
 import qualified Data.Text as X
-import System.Console.Rainbow
-import System.Console.Rainbow.Types
-import System.Console.Rainbow.Colors
+import Rainbow
 import qualified Rainbox.Box.Primitives as B
 import Rainbox.Box.Primitives
   ( Box

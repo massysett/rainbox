@@ -47,7 +47,7 @@ packages from `rainbow`:
 > import Data.List (intersperse)
 > import Data.Monoid
 > import Data.String
-> import System.Console.Rainbow
+> import Rainbow
 > import Rainbox
 
 
