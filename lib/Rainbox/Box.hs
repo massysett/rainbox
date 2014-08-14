@@ -101,6 +101,7 @@ import Data.Monoid
 import Data.List (intersperse)
 import qualified Data.Text as X
 import Rainbow
+import Rainbow.Types
 import qualified Rainbox.Box.Primitives as B
 import Rainbox.Box.Primitives
   ( Box
@@ -118,10 +119,10 @@ backgroundFromChunk :: Chunk -> B.Background
 backgroundFromChunk (Chunk ts _) = B.Background bk8 bk256
   where
     bk8 = case getLast . background8 . style8 $ ts of
-      Nothing -> c8_default
+      Nothing -> noColor8
       Just c -> c
     bk256 = case getLast . background256 . style256 $ ts of
-      Nothing -> c256_default
+      Nothing -> noColor256
       Just c -> c
 
 backgroundToTextSpec :: B.Background -> TextSpec
@@ -131,7 +132,7 @@ backgroundToTextSpec (B.Background bk8 bk256) = TextSpec
 
 -- | Use the default background colors of the current terminal.
 defaultBackground :: B.Background
-defaultBackground = B.Background c8_default c256_default
+defaultBackground = B.Background noColor8 noColor256
 
 -- | Use the same color for 8 and 256-color backgrounds.
 same :: Color8 -> B.Background

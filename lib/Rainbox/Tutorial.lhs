@@ -132,9 +132,9 @@ will make a function that returns a `Cell` with our desired
 defaults:
 
 > cell :: [Chunk] -> Chunk -> Cell
-> cell cks back = Cell brs left top (backgroundFromChunk back)
+> cell cks bck = Cell brs left top (backgroundFromChunk bck)
 >   where
->     brs = map Bar . map ((:[]) . (<> back)) $ cks
+>     brs = map Bar . map ((:[]) . (<> bck)) $ cks
 
 
 > recordToCells :: Record -> Chunk -> [Cell]
@@ -151,7 +151,7 @@ Zipping to get rows of cells
 ============================
 
 > cellRows :: [[Cell]]
-> cellRows = zipWith recordToCells records (cycle [mempty, f_yellow])
+> cellRows = zipWith recordToCells records (cycle [mempty, fore yellow])
 
 Adding white space between columns
 ==================================
