@@ -68,10 +68,6 @@ properties = A.empty
     , "<http://www.github.com/massysett/rainbox"
     ]
   , A.prCategory = "Text"
-  , A.prTestedWith =
-    map (\ls -> (A.GHC, A.eq ls))
-    [ [7,4,1], [7,6,3], [7,8,2] ]
-
   , A.prExtraSourceFiles =
     [ "README.md"
     , "sunlight-test.hs"
