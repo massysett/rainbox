@@ -6,15 +6,21 @@ import qualified Cartel as A
 
 -- Package version
 version :: A.Version
-version = A.Version [0,4,0,4]
+version = A.Version [0,6,0,0]
 
 -- Dependencies
 
 base :: A.Package
 base = A.closedOpen "base" [4,5,0,0] [4,8,0,0]
 
+rainbowVersion :: [Int]
+rainbowVersion = [0,16,2,0]
+
 rainbow :: A.Package
-rainbow = A.closedOpen "rainbow" [0,16,2,0] [0,17]
+rainbow = A.closedOpen "rainbow" rainbowVersion [0,17]
+
+rainbow_tests :: A.Package
+rainbow_tests = A.exactly "rainbow-tests" rainbowVersion
 
 terminfo :: A.Package
 terminfo = A.closedOpen "terminfo" [0,3,2] [0,5,0,0]
@@ -35,7 +41,7 @@ tasty_quickcheck :: A.Package
 tasty_quickcheck = A.closedOpen "tasty-quickcheck" [0,8,1] [0,9]
 
 quickcheck :: A.Package
-quickcheck = A.closedOpen "QuickCheck" [2,7] [2,8]
+quickcheck = A.closedOpen "QuickCheck" [2,7,5] [2,8]
 
 random :: A.Package
 random = A.closedOpen "random" [1,0,0,0] [1,1]
@@ -124,6 +130,7 @@ visual ms = A.TestSuite "rainbox-visual" $
     , tasty_quickcheck
     , quickcheck
     , random
+    , rainbow_tests
     ]
   ]
 
@@ -144,6 +151,7 @@ mosaic ms = A.Executable "rainbox-mosaic"
       , tasty_quickcheck
       , quickcheck
       , random
+      , rainbow_tests
       ]
     ]
     [ A.buildable False]
@@ -164,6 +172,7 @@ mainTest ms = A.TestSuite "rainbox-test"
     [ tasty
     , tasty_quickcheck
     , quickcheck
+    , rainbow_tests
     ]
   ]
 

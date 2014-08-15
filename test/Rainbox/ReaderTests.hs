@@ -114,9 +114,9 @@ specs h v i = Specs
 
 genSpecs :: Gen (Inputs, Specs)
 genSpecs = do
-  h <- frequency [(3, fmap getPositive arbitrarySizedIntegral),
+  h <- frequency [(3, fmap abs arbitrarySizedIntegral),
                   (1, arbitrarySizedIntegral)]
-  v <- frequency [(3, fmap getPositive arbitrarySizedIntegral),
+  v <- frequency [(3, fmap abs arbitrarySizedIntegral),
                   (1, arbitrarySizedIntegral)]
   i <- arbitrary
   let ss = specs h v i

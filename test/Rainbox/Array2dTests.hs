@@ -332,12 +332,12 @@ tests = testGroup "Array2d"
     forAll genArray propRoundTripCols
 
   , testProperty "mapTableNoChangeCols" $
-    forAll genLabelF $ \f ->
+    forAll (fmap Blind genLabelF) $ \(Blind f) ->
     forAll genTable $ \t ->
     mapTableNoChangeCols f t
 
   , testProperty "mapTableNoChangeRows" $
-    forAll genLabelF $ \f ->
+    forAll (fmap Blind genLabelF) $ \(Blind f) ->
     forAll genTable $ \t ->
     mapTableNoChangeRows f t
 
@@ -354,12 +354,12 @@ tests = testGroup "Array2d"
     forAll genArray propLabelRowsRebuild
 
   , testProperty "propMapRowLabelsCols" $
-    forAll genChangeLabelF $ \f ->
+    forAll (fmap Blind genChangeLabelF) $ \(Blind f) ->
     forAll genTable $ \t ->
     propMapRowLabelsCols f t
 
   , testProperty "propMapRowLabelsCells" $
-    forAll genChangeLabelF $ \f ->
+    forAll (fmap Blind genChangeLabelF) $ \(Blind f) ->
     forAll genTable $ \t ->
     propMapRowLabelsCells f t
 
@@ -370,12 +370,12 @@ tests = testGroup "Array2d"
     forAll genTable propMapRowLabelsRelabel
 
   , testProperty "propMapColLabelsCols" $
-    forAll genChangeLabelF $ \f ->
+    forAll (fmap Blind genChangeLabelF) $ \(Blind f) ->
     forAll genTable $ \t ->
     propMapColLabelsCols f t
 
   , testProperty "propMapColLabelsCells" $
-    forAll genChangeLabelF $ \f ->
+    forAll (fmap Blind genChangeLabelF) $ \(Blind f) ->
     forAll genTable $ \t ->
     propMapColLabelsCells f t
 

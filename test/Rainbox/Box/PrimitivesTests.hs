@@ -5,9 +5,9 @@ import Control.Applicative
 import Test.Tasty
 import Test.Tasty.QuickCheck (testProperty)
 import Test.QuickCheck
-import System.Console.Rainbow
+import Rainbow
 import qualified Data.Text as X
-import qualified Test.Rainbow.Generators as G
+import qualified Rainbow.Generators as G
 import Rainbox.Box.Primitives
 import Rainbox.Box (backgroundToTextSpec)
 
@@ -17,12 +17,12 @@ genText = fmap X.pack $ listOf c
     c = elements ['0'..'Z']
 
 genChunk :: Gen Chunk
-genChunk = listOf genText >>= G.chunk
+genChunk = G.chunk
 
 genHeight :: Gen Height
 genHeight = fmap Height $ frequency [(3, nonNeg), (1, neg)]
   where
-    nonNeg = fmap getNonNegative arbitrarySizedIntegral
+    nonNeg = fmap abs arbitrarySizedIntegral
     neg = fmap (negate . abs) arbitrarySizedIntegral
 
 genWidth :: Gen Width
@@ -32,7 +32,7 @@ genWidth = fmap Width $ frequency [(3, nonNeg), (1, neg)]
     neg = fmap (negate . abs) arbitrarySizedIntegral
 
 genBackground :: Gen Background
-genBackground = liftM2 Background G.colors8 G.colors256
+genBackground = liftM2 Background G.color8 G.color256
 
 -- | Generates blank Box.
 genBlankBox :: Gen Box

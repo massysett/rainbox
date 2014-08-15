@@ -5,7 +5,7 @@ import Rainbox.Box.PrimitivesTests
 import qualified Data.Text as X
 import Test.Tasty.QuickCheck (testProperty)
 import Test.Tasty
-import System.Console.Rainbow
+import Rainbow
 import Test.QuickCheck hiding (resize)
 
 tests :: TestTree

@@ -4,16 +4,15 @@ module Visual where
 
 import Control.Monad
 import Rainbox.Box
-import System.Console.Rainbow
-import System.Console.Rainbow.Colors
+import Rainbow
 import Data.Monoid
 import Test.QuickCheck.Gen hiding (resize)
 import Test.QuickCheck.Random
 import Rainbox.Box.PrimitivesTests
-import Data.Maybe (fromJust)
 import Data.String
+import Data.Word (Word8)
 
-colors = f_yellow <> b_blue
+colors = fore yellow <> back blue
 
 narrow = "narrow box" <> colors
 
@@ -21,9 +20,9 @@ midwidth = "medium width box" <> colors
 
 wide = "a wide box, see how wide I am?" <> colors
 
-greenBack = same c8_green
+greenBack = same green8
 
-yellowBack = same c8_yellow
+yellowBack = same yellow8
 
 all3 = [narrow, midwidth, wide]
 
@@ -75,8 +74,7 @@ testBox = catV defaultBackground left . map mkLine $ clrs
   where
     mkLine clr = chunk $ txt <> clr
     txt = fromString ['0'..'9']
-    lkp k = bc256 . fromJust . lookup k $ c256_all
-    clrs = map lkp . take 10 . iterate (+6) $ 160
+    clrs = map back . take 10 . iterate (+6) $ (160 :: Word8)
 
 singleH
   :: String
@@ -125,7 +123,7 @@ tests = do
   testVert "punctuateH" (\bk av bxs -> punctuateH bk av " " bxs)
   testHoriz "punctuateV" (\bk ah bxs -> punctuateV bk ah " " bxs)
 
-  let green = backgroundFromChunk b_green
+  let grn = same green8
 
   testHoriz "column" (\bk ah bxs -> catV defaultBackground left
                         (column bk ah bxs))
@@ -138,17 +136,17 @@ tests = do
   singleV "viewV, 3" (\av -> viewV 3 av testBox)
 
   single "grow, 13x13"
-    (\av ah -> grow green (Height 13) (Width 13) av ah testBox)
-  singleH "growH, 13" (\ah -> growH green 13 ah testBox)
-  singleV "growV, 13" (\av -> growV green 13 av testBox)
+    (\av ah -> grow grn (Height 13) (Width 13) av ah testBox)
+  singleH "growH, 13" (\ah -> growH grn 13 ah testBox)
+  singleV "growV, 13" (\av -> growV grn 13 av testBox)
 
   single "resize, 13x13"
-    (\av ah -> resize green (Height 13) (Width 13) av ah testBox)
-  singleH "resizeH, 13" (\ah -> resizeH green 13 ah testBox)
-  singleV "resizeV, 13" (\av -> resizeV green 13 av testBox)
+    (\av ah -> resize grn (Height 13) (Width 13) av ah testBox)
+  singleH "resizeH, 13" (\ah -> resizeH grn 13 ah testBox)
+  singleV "resizeV, 13" (\av -> resizeV grn 13 av testBox)
 
   single "resize, 7x7"
-    (\av ah -> resize green (Height 7) (Width 7) av ah testBox)
-  singleH "resizeH, 7" (\ah -> resizeH green 7 ah testBox)
-  singleV "resizeV, 7" (\av -> resizeV green 7 av testBox)
+    (\av ah -> resize grn (Height 7) (Width 7) av ah testBox)
+  singleH "resizeH, 7" (\ah -> resizeH grn 7 ah testBox)
+  singleV "resizeV, 7" (\av -> resizeV grn 7 av testBox)
 
