@@ -9,7 +9,6 @@ module Rainbox.Reader
   ( -- * Backgrounds
     B.Background(..)
   , R.defaultBackground
-  , R.same
 
   -- * Box properties
   , B.Bar(..)

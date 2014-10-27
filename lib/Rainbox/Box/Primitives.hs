@@ -80,10 +80,12 @@ import Data.String
 -- # Background
 
 -- | Background colors to use when inserting necessary padding.
-data Background = Background
-  { boxBackground8 :: Color8
-  , boxBackground256 :: Color256
-  } deriving (Eq, Show)
+newtype Background = Background { toBoth :: Both }
+  deriving (Eq, Show)
+
+instance Color Background where
+  back = back . toBoth
+  fore = fore . toBoth
 
 -- # Box
 

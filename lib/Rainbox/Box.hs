@@ -35,8 +35,6 @@ module Rainbox.Box
     Background(..)
   , defaultBackground
   , backgroundFromChunk
-  , backgroundToTextSpec
-  , same
   
   -- * Height and columns
   , Height(..)
@@ -116,7 +114,8 @@ import Rainbox.Box.Primitives
 import qualified System.IO as IO
 
 backgroundFromChunk :: Chunk -> B.Background
-backgroundFromChunk (Chunk ts _) = B.Background bk8 bk256
+backgroundFromChunk (Chunk ts _) =
+  B.Background $ Both bk8 (Just bk256)
   where
     bk8 = case getLast . background8 . style8 $ ts of
       Nothing -> noColor8
@@ -125,18 +124,9 @@ backgroundFromChunk (Chunk ts _) = B.Background bk8 bk256
       Nothing -> noColor256
       Just c -> c
 
-backgroundToTextSpec :: B.Background -> TextSpec
-backgroundToTextSpec (B.Background bk8 bk256) = TextSpec
-  { style8 = mempty { background8 = Last . Just $ bk8 }
-  , style256 = mempty { background256 = Last . Just $ bk256 } }
-
 -- | Use the default background colors of the current terminal.
 defaultBackground :: B.Background
-defaultBackground = B.Background noColor8 noColor256
-
--- | Use the same color for 8 and 256-color backgrounds.
-same :: Color8 -> B.Background
-same c = B.Background c (to256 c)
+defaultBackground = B.Background $ Both noColor8 Nothing
 
 --
 -- # Box making
@@ -327,8 +317,8 @@ renderRod = map toChunk . B.unRod
   where
     toChunk = either spcToChunk id . B.unNibble
     spcToChunk ss =
-      Chunk (backgroundToTextSpec (B.spcBackground ss))
-            [X.replicate (B.numSpaces ss) (X.singleton ' ')]
+      fromText (X.replicate (B.numSpaces ss) (X.singleton ' '))
+      <> back (B.spcBackground ss)
 
 -- | Prints a Box to standard output.  If standard output is not a
 -- terminal, no colors are used.  Otherwise, colors are used if your

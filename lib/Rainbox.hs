@@ -20,7 +20,6 @@ module Rainbox
     Background(..)
   , defaultBackground
   , backgroundFromChunk
-  , same
 
   -- * Alignment
   , Align
@@ -35,8 +34,9 @@ module Rainbox
   -- * Bar
   , Bar(..)
 
-  -- * Cell
+  -- * Cell and Box
   , Cell(..)
+  , Box
 
   -- * Creating Box and gluing them together
 

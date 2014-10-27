@@ -6,7 +6,7 @@ import qualified Cartel as A
 
 -- Package version
 version :: A.Version
-version = A.Version [0,6,0,2]
+version = A.Version [0,8,0,0]
 
 -- Dependencies
 
