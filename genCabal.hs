@@ -6,21 +6,18 @@ import qualified Cartel as A
 
 -- Package version
 version :: A.Version
-version = A.Version [0,6,0,0]
+version = A.Version [0,6,0,2]
 
 -- Dependencies
 
 base :: A.Package
 base = A.closedOpen "base" [4,5,0,0] [4,8,0,0]
 
-rainbowVersion :: [Int]
-rainbowVersion = [0,16,2,0]
-
 rainbow :: A.Package
-rainbow = A.closedOpen "rainbow" rainbowVersion [0,17]
+rainbow = A.nextBreaking "rainbow" [0,18]
 
 rainbow_tests :: A.Package
-rainbow_tests = A.exactly "rainbow-tests" rainbowVersion
+rainbow_tests = A.nextBreaking "rainbow-tests" [0,18]
 
 terminfo :: A.Package
 terminfo = A.closedOpen "terminfo" [0,3,2] [0,5,0,0]
