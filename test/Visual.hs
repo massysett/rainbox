@@ -20,9 +20,9 @@ midwidth = "medium width box" <> colors
 
 wide = "a wide box, see how wide I am?" <> colors
 
-greenBack = same green8
+greenBack = Background (Radiant green8 Nothing)
 
-yellowBack = same yellow8
+yellowBack = Background (Radiant yellow8 Nothing)
 
 all3 = [narrow, midwidth, wide]
 
@@ -123,7 +123,7 @@ tests = do
   testVert "punctuateH" (\bk av bxs -> punctuateH bk av " " bxs)
   testHoriz "punctuateV" (\bk ah bxs -> punctuateV bk ah " " bxs)
 
-  let grn = same green8
+  let grn = Background (Radiant green8 Nothing)
 
   testHoriz "column" (\bk ah bxs -> catV defaultBackground left
                         (column bk ah bxs))

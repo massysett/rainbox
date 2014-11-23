@@ -35,6 +35,7 @@ module Rainbox.Box
     Background(..)
   , defaultBackground
   , backgroundFromChunk
+  , backgroundToTextSpec
   
   -- * Height and columns
   , Height(..)
@@ -100,6 +101,7 @@ import Data.List (intersperse)
 import qualified Data.Text as X
 import Rainbow
 import Rainbow.Types
+import Rainbow.Colors
 import qualified Rainbox.Box.Primitives as B
 import Rainbox.Box.Primitives
   ( Box
@@ -115,7 +117,7 @@ import qualified System.IO as IO
 
 backgroundFromChunk :: Chunk -> B.Background
 backgroundFromChunk (Chunk ts _) =
-  B.Background $ Both bk8 (Just bk256)
+  B.Background $ Radiant bk8 (Just bk256)
   where
     bk8 = case getLast . background8 . style8 $ ts of
       Nothing -> noColor8
@@ -124,9 +126,22 @@ backgroundFromChunk (Chunk ts _) =
       Nothing -> noColor256
       Just c -> c
 
+backgroundToTextSpec :: B.Background -> TextSpec
+backgroundToTextSpec (B.Background (Radiant c8 may256)) = TextSpec s8 s256
+  where
+    s8 = Style8 f8 b8 sc
+    s256 = Style256 f256 b256 sc
+    f8 = Last Nothing
+    f256 = Last Nothing
+    b8 = Last (Just c8)
+    b256 = case may256 of
+      Nothing -> Last (Just (to256 c8))
+      Just c256 -> Last (Just c256)
+    sc = mempty
+
 -- | Use the default background colors of the current terminal.
 defaultBackground :: B.Background
-defaultBackground = B.Background $ Both noColor8 Nothing
+defaultBackground = B.Background $ Radiant noColor8 Nothing
 
 --
 -- # Box making

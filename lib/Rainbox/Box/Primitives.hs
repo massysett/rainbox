@@ -80,12 +80,12 @@ import Data.String
 -- # Background
 
 -- | Background colors to use when inserting necessary padding.
-newtype Background = Background { toBoth :: Both }
-  deriving (Eq, Show)
+newtype Background = Background Radiant
+  deriving (Eq, Ord, Show)
 
 instance Color Background where
-  back = back . toBoth
-  fore = fore . toBoth
+  back (Background b) = back b
+  fore (Background b) = fore b
 
 -- # Box
 
@@ -106,7 +106,7 @@ instance IsString Nibble where
 instance HasWidth Nibble where
   width = either width width . unNibble
 
--- | Occupies a single row on screen.  The 'Chunk' you place in a
+-- | Occupies a single row on screen.  The 'Chunk's you place in a
 -- 'Bar' should not have any control characters such as newlines or
 -- tabs, as rainbox assumes that each character in a 'Bar' takes up
 -- one screen column and that each character does not create

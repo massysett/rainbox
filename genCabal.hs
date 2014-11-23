@@ -14,16 +14,16 @@ base :: A.Package
 base = A.closedOpen "base" [4,5,0,0] [4,8,0,0]
 
 rainbow :: A.Package
-rainbow = A.nextBreaking "rainbow" [0,18]
+rainbow = A.nextBreaking "rainbow" [0,20]
 
 rainbow_tests :: A.Package
-rainbow_tests = A.nextBreaking "rainbow-tests" [0,18]
+rainbow_tests = A.nextBreaking "rainbow-tests" [0,20]
 
 terminfo :: A.Package
 terminfo = A.closedOpen "terminfo" [0,3,2] [0,5,0,0]
 
 text :: A.Package
-text = A.closedOpen "text" [0,11,3,1] [1,2,0,0]
+text = A.closedOpen "text" [0,11,3,1] [1,3,0,0]
 
 transformers :: A.Package
 transformers = A.closedOpen "transformers" [0,3,0,0] [0,5,0,0]
@@ -32,7 +32,7 @@ array :: A.Package
 array = A.closedOpen "array" [0,4,0,0] [0,6,0,0]
 
 tasty :: A.Package
-tasty = A.closedOpen "tasty" [0,8] [0,9]
+tasty = A.closedOpen "tasty" [0,10,1] [0,11]
 
 tasty_quickcheck :: A.Package
 tasty_quickcheck = A.closedOpen "tasty-quickcheck" [0,8,1] [0,9]
@@ -41,7 +41,7 @@ quickcheck :: A.Package
 quickcheck = A.closedOpen "QuickCheck" [2,7,5] [2,8]
 
 random :: A.Package
-random = A.closedOpen "random" [1,0,0,0] [1,1]
+random = A.closedOpen "random" [1,0,0,0] [1,2]
 
 properties :: A.Properties
 properties = A.empty

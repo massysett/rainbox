@@ -32,7 +32,7 @@ genWidth = fmap Width $ frequency [(3, nonNeg), (1, neg)]
     neg = fmap (negate . abs) arbitrarySizedIntegral
 
 genBackground :: Gen Background
-genBackground = liftM2 Background G.color8 G.color256
+genBackground = fmap Background G.radiant
 
 -- | Generates blank Box.
 genBlankBox :: Gen Box
