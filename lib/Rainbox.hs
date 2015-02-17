@@ -16,13 +16,9 @@
 -- module together with "Rainbox.Box" to create very complex
 -- layouts.)
 module Rainbox
-  ( -- * Backgrounds
-    Background(..)
-  , defaultBackground
-  , backgroundFromChunk
-
-  -- * Alignment
-  , Align
+  (
+    -- * Alignment
+    Align
   , Horiz
   , Vert
   , top
@@ -45,7 +41,6 @@ module Rainbox
   -- complex needs.
   , gridByRows
   , gridByCols
-  , checkGrid
   , boxCells
   , glueBoxes
 
@@ -54,6 +49,7 @@ module Rainbox
   , printBox
   ) where
 
+import Rainbow.Colors
 import Rainbox.Box
 import Rainbox.Array2d
 import Data.Array
@@ -73,7 +69,7 @@ data Cell = Cell
   -- ^ How this Cell aligns compared to other Cell in its row; use
   -- 'top', 'center', or 'bottom'.
 
-  , background :: Background
+  , background :: Radiant
   -- ^ Background color for necessary padding that is added to the
   -- Cell to make it the correct width and height.  Does not affect
   -- the 'Chunk' contained in the 'bars'; these will use the colors
@@ -81,10 +77,11 @@ data Cell = Cell
   } deriving (Eq, Show)
 
 -- | Creates a Cell with a 'left' horizontal alignment, a 'top'
--- vertical alignment, and a 'defaultBackground'.  The cell will be
--- one 'Bar' tall and contain the text given in the string.
+-- vertical alignment, and a background of 'noColorRadianat'.  The
+-- cell will be one 'Bar' tall and contain the text given in the
+-- string.
 instance IsString Cell where
-  fromString s = Cell [(fromString s)] left top defaultBackground
+  fromString s = Cell [(fromString s)] left top noColorRadiant
 
 -- | Returns the width of each 'Bar' in the 'Cell'.
 cellWidths :: Cell -> [Int]
@@ -120,43 +117,31 @@ glueBoxes
   => Array (col, row) Box
   -> Box
 glueBoxes
-  = catH defaultBackground top
-  . map (catV defaultBackground left)
+  = catH noColorRadiant top
+  . map (catV noColorRadiant left)
   . cols
 
--- | Creates a single 'Box' from a list of rows of 'Cell'.  Each
--- list is a row of 'Cell'.  The list of rows is from top to bottom;
--- within each row, the cells are given from left to right.
---
--- /This function is partial./  Each list of 'Cell' must be
--- the same length; otherwise, your program will crash.  Since you
--- will typically generate the list of rows using 'map' or list
--- comprehensions or the like, this isn't typically a problem; if it
--- is a problem, then check the inputs to this function with
--- 'checkGrid' before you apply it.
+-- | Creates a single 'Box' from a list of rows of 'Cell'.  Each list
+-- is a row of 'Cell'.  The list of rows is from top to bottom; within
+-- each row, the cells are given from left to right.  All rows will be
+-- the same length as the first row.  Any row that is longer than the
+-- first row will have cells lopped off of the end, and any row that
+-- is shorter than the first row will be padded with empty cells on
+-- the end.
 
 gridByRows :: [[Cell]] -> Box
-gridByRows = glueBoxes . boxCells . arrayByRows
+gridByRows = glueBoxes . boxCells . arrayByRows padCell
 
 -- | Creates a single 'Box' from a list of columns of 'Cell'.  Each
 -- list is a column of 'Cell'.  The list of columns is from left to
--- right; within each column, the cells are given from top to
--- bottom.
---
--- /This function is partial./  Each list of 'Cell' must be
--- the same length; otherwise, your program will crash.  Since you
--- will typically generate the list of columns using 'map' or list
--- comprehensions or the like, this isn't typically a problem; if it
--- is a problem, then check the inputs to this function with
--- 'checkGrid' before you apply it.
+-- right; within each column, the cells are given from top to bottom.
+-- All columns will be the same height as the first column.  Any
+-- column that is longer than the first column will have cells lopped
+-- off the bottom, and any column that is shorter than the first
+-- column will be padded on the bottom with blank cells.
 
 gridByCols :: [[Cell]] -> Box
-gridByCols = glueBoxes . boxCells . arrayByCols
+gridByCols = glueBoxes . boxCells . arrayByCols padCell
 
--- | Checks the input to 'gridByRows' or 'gridByCols' to ensure that
--- it is safe.  True if the list of list of 'Cell' is safe for
--- either of these functions; False if not.
-checkGrid :: [[Cell]] -> Bool
-checkGrid ls = case ls of
-  [] -> True
-  x:xs -> let len = length x in all ((== len) . length) xs
+padCell :: Cell
+padCell = Cell [] left top noColorRadiant

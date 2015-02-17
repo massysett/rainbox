@@ -6,12 +6,9 @@
 -- operators to easily join up 'Box'.  The disadvantage is that
 -- using the 'Reader' monad adds a layer of indirection.
 module Rainbox.Reader
-  ( -- * Backgrounds
-    B.Background(..)
-  , R.defaultBackground
-
+  (
   -- * Box properties
-  , B.Bar(..)
+    B.Bar(..)
   , B.Box
   , B.unBox
 
@@ -89,9 +86,10 @@ import Rainbox.Box.Primitives
   , Horiz
   , Vert
   )
+import Rainbow
 
 data Specs = Specs
-  { background :: B.Background
+  { background :: Radiant
   , alignH :: Align Horiz
   , alignV :: Align Vert
   , spaceH :: Int

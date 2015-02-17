@@ -31,14 +31,9 @@
 -- character.  When you print your 'Box', the blank characters will
 -- have the appropriate background color.
 module Rainbox.Box
-  ( -- * Backgrounds
-    Background(..)
-  , defaultBackground
-  , backgroundFromChunk
-  , backgroundToTextSpec
-  
+  (
   -- * Height and columns
-  , Height(..)
+    Height(..)
   , B.height
   , Width(..)
   , B.HasWidth(..)
@@ -100,8 +95,6 @@ import Data.Monoid
 import Data.List (intersperse)
 import qualified Data.Text as X
 import Rainbow
-import Rainbow.Types
-import Rainbow.Colors
 import qualified Rainbox.Box.Primitives as B
 import Rainbox.Box.Primitives
   ( Box
@@ -110,49 +103,30 @@ import Rainbox.Box.Primitives
   , Vert
   , Height(..)
   , Width(..)
-  , Background
   , unBox
   )
 import qualified System.IO as IO
-
-backgroundFromChunk :: Chunk -> B.Background
-backgroundFromChunk (Chunk ts _) =
-  B.Background $ Radiant bk8 (Just bk256)
-  where
-    bk8 = case getLast . background8 . style8 $ ts of
-      Nothing -> noColor8
-      Just c -> c
-    bk256 = case getLast . background256 . style256 $ ts of
-      Nothing -> noColor256
-      Just c -> c
-
-backgroundToTextSpec :: B.Background -> TextSpec
-backgroundToTextSpec (B.Background (Radiant c8 may256)) = TextSpec s8 s256
-  where
-    s8 = Style8 f8 b8 sc
-    s256 = Style256 f256 b256 sc
-    f8 = Last Nothing
-    f256 = Last Nothing
-    b8 = Last (Just c8)
-    b256 = case may256 of
-      Nothing -> Last (Just (to256 c8))
-      Just c256 -> Last (Just c256)
-    sc = mempty
-
--- | Use the default background colors of the current terminal.
-defaultBackground :: B.Background
-defaultBackground = B.Background $ Radiant noColor8 Nothing
 
 --
 -- # Box making
 --
 
 -- | A blank horizontal box with a given width and no height.
-blankH :: Background -> Int -> Box
+blankH
+  :: Radiant
+  -- ^ Background colors
+  -> Int
+  -- ^ Box width
+  -> Box
 blankH bk i = B.blank bk (Height 0) (Width i)
 
 -- | A blank vertical box with a given length.
-blankV :: Background -> Int -> Box
+blankV
+  :: Radiant
+  -- ^ Background colors
+  -> Int
+  -- ^ Box height
+  -> Box
 blankV bk i = B.blank bk (Height i) (Width 0)
 
 -- | A Box made of a single 'Chunk'.
@@ -167,7 +141,8 @@ chunk = B.chunks . (:[])
 -- added to the right and bottom sides of the resulting 'Box'.
 
 grow
-  :: Background
+  :: Radiant
+  -- ^ Background colors
   -> Height
   -> Width
   -> Align Vert
@@ -181,7 +156,8 @@ grow bk (B.Height h) (B.Width w) av ah
 -- | Grow a 'Box' horizontally.
 
 growH
-  :: Background
+  :: Radiant
+  -- ^ Background colors
   -> Int
   -- ^ Resulting width
   -> Align Horiz
@@ -201,7 +177,8 @@ growH bk tgtW a b
 
 -- | Grow a 'Box' vertically.
 growV
-  :: Background
+  :: Radiant
+  -- ^ Background colors
   -> Int
   -- ^ Resulting height
   -> Align Vert
@@ -222,7 +199,8 @@ growV bk tgtH a b
 -- | Returns a list of 'Box', each being exactly as wide as the
 -- widest 'Box' in the input list.
 column
-  :: Background
+  :: Radiant
+  -- ^ Background colors
   -> Align Horiz
   -> [Box]
   -> [Box]
@@ -250,7 +228,8 @@ view h w av ah
 -- 'Height' or 'Width' is less than 1.
 
 resize
-  :: Background
+  :: Radiant
+  -- ^ Background colors
   -> Height
   -> Width
   -> Align Vert
@@ -263,7 +242,8 @@ resize bk h w av ah
 
 -- | Resize horizontally.
 resizeH
-  :: Background
+  :: Radiant
+  -- ^ Background colors
   -> Int
   -- ^ Resulting width
   -> Align Horiz
@@ -278,7 +258,8 @@ resizeH bk w a b
 
 -- | Resize vertically.
 resizeV
-  :: Background
+  :: Radiant
+  -- ^ Background colors
   -> Int
   -- ^ Resulting height
   -> Align Vert
@@ -297,25 +278,51 @@ resizeV bk h a b
 
 -- | @sepH sep a bs@ lays out @bs@ horizontally with alignment @a@,
 --   with @sep@ amount of space in between each.
-sepH :: Background -> Int -> Align Vert -> [Box] -> Box
+sepH
+  :: Radiant
+  -- ^ Background colors
+  -> Int
+  -- ^ Number of separating spaces
+  -> Align Vert
+  -> [Box]
+  -> Box
 sepH bk sep a = punctuateH bk a bl
   where
     bl = blankH bk sep
 
 -- | @sepV sep a bs@ lays out @bs@ vertically with alignment @a@,
 --   with @sep@ amount of space in between each.
-sepV :: Background -> Int -> Align Horiz -> [Box] -> Box
+sepV
+  :: Radiant
+  -- ^ Background colors
+  -> Int
+  -- ^ Number of separating spaces
+  -> Align Horiz
+  -> [Box]
+  -> Box
 sepV bk sep a = punctuateV bk a bl
   where
     bl = blankV bk sep
 
 -- | @punctuateH a p bs@ horizontally lays out the boxes @bs@ with a
 --   copy of @p@ interspersed between each.
-punctuateH :: Background -> Align Vert -> Box -> [Box] -> Box
+punctuateH
+  :: Radiant
+  -- ^ Background colors
+  -> Align Vert
+  -> Box
+  -> [Box]
+  -> Box
 punctuateH bk a sep = B.catH bk a . intersperse sep
 
 -- | A vertical version of 'punctuateH'.
-punctuateV :: Background -> Align Horiz -> Box -> [Box] -> Box
+punctuateV
+  :: Radiant
+  -- ^ Background colors
+  -> Align Horiz
+  -> Box
+  -> [Box]
+  -> Box
 punctuateV bk a sep = B.catV bk a . intersperse sep
 
 -- | Convert a 'Box' to Rainbow 'Chunk's.  You can then print it

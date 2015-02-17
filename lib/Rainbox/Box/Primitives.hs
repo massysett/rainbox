@@ -25,11 +25,9 @@
 -- character.  When you print your 'Box', the blank characters will
 -- have the appropriate background color.
 module Rainbox.Box.Primitives
-  ( -- * Background
-    Background(..)
-
+  (
   -- * Alignment
-  , Align
+    Align
   , Vert
   , Horiz
   , center
@@ -77,21 +75,11 @@ import Data.Monoid
 import qualified Data.Text as X
 import Data.String
 
--- # Background
-
--- | Background colors to use when inserting necessary padding.
-newtype Background = Background Radiant
-  deriving (Eq, Ord, Show)
-
-instance Color Background where
-  back (Background b) = back b
-  fore (Background b) = fore b
-
 -- # Box
 
 data Spaces = Spaces
   { numSpaces :: Int
-  , spcBackground :: Background
+  , spcBackground :: Radiant
   } deriving (Eq, Show)
 
 instance HasWidth Spaces where
@@ -125,7 +113,12 @@ newtype Bar = Bar { unBar :: [Chunk] }
 barToBox :: Bar -> Box
 barToBox = chunks . unBar
 
-barsToBox :: Background -> Align Horiz -> [Bar] -> Box
+barsToBox
+  :: Radiant
+  -- ^ Background colors
+  -> Align Horiz
+  -> [Bar]
+  -> Box
 barsToBox bk ah = catV bk ah . map barToBox
 
 instance IsString Bar where
@@ -217,7 +210,8 @@ instance HasWidth Chunk where
 
 -- | A blank 'Box'.  Useful for aligning other 'Box'.
 blank
-  :: Background
+  :: Radiant
+  -- ^ Background colors
   -> Height
   -> Width
   -> Box
@@ -279,7 +273,12 @@ right = NonCenter ARight
 -- > ----------....
 -- > --------------
 
-catH :: Background -> Align Vert -> [Box] -> Box
+catH
+  :: Radiant
+  -- ^ Background colors
+  -> Align Vert
+  -> [Box]
+  -> Box
 catH bk al bs
   | null bs = Box $ NoHeight 0
   | hght == 0 = Box . NoHeight . sum . map width $ bs
@@ -319,7 +318,12 @@ catH bk al bs
 -- > ...----
 -- > ...----
 
-catV :: Background -> Align Horiz -> [Box] -> Box
+catV
+  :: Radiant
+  -- ^ Background colors
+  -> Align Horiz
+  -> [Box]
+  -> Box
 catV bk al bs
   | null bs = Box $ NoHeight 0
   | otherwise = Box . foldr f (NoHeight w)
@@ -352,7 +356,13 @@ catV bk al bs
 --
 -- where dashes is a 'Bar' with data, and dots is a blank 'Bar'.
 
-padHoriz :: Background -> Align Vert -> Int -> BoxP -> [Rod]
+padHoriz
+  :: Radiant
+  -- ^ Background colors
+  -> Align Vert
+  -> Int
+  -> BoxP
+  -> [Rod]
 padHoriz bk a hght bp = case bp of
   NoHeight w -> map (Rod . (:[])) . replicate h $ blanks bk w
   WithHeight rs -> concat [tp, rs, bot]
@@ -381,7 +391,8 @@ padHoriz bk a hght bp = case bp of
 -- > ...-------
 
 padVert
-  :: Background
+  :: Radiant
+  -- ^ Background colors
   -> Align Horiz
   -> Int
   -> Rod
@@ -544,7 +555,7 @@ takeChunkChars n c = c { text = go n (text c) }
 
 -- | Generate spaces.
 blanks
-  :: Background
+  :: Radiant
   -- ^ Background colors
   -> Int
   -- ^ Number of blanks

@@ -5,6 +5,7 @@ import Test.QuickCheck
 import Test.Tasty.QuickCheck (testProperty)
 import Data.Array
 import Rainbox.Array2d
+import Test.ChasingBottoms
 
 -- | Generates a two-dimensional array of Int.  The size of the
 -- array depends on the size parameter.
@@ -109,7 +110,7 @@ propRoundTripRows
   -> Bool
 propRoundTripRows ay = sameShape ay ay'
   where
-    ay' = arrayByRows . rows $ ay
+    ay' = arrayByRows undefined . rows $ ay
 
 -- | Round-tripping through columns and arrayByCols
 propRoundTripCols
@@ -118,7 +119,7 @@ propRoundTripCols
   -> Bool
 propRoundTripCols ay = sameShape ay ay'
   where
-    ay' = arrayByCols . cols $ ay
+    ay' = arrayByCols undefined . cols $ ay
 
 -- | True if both arrays have the same shape; that is, the same
 -- number of rows and the same number of columns and the same
@@ -309,6 +310,9 @@ propMapColLabelsRelabel t = t == t'
   where
     t' = mapColLabels (\r _ _ -> r) t
 
+arrayHasNoBottoms :: Ix i => Array i e -> Bool
+arrayHasNoBottoms = all (not . isBottom) . elems
+
 tests :: TestTree
 tests = testGroup "Array2d"
   [ testProperty "bounds of columns in Table matches those of cells" $
@@ -330,6 +334,15 @@ tests = testGroup "Array2d"
 
   , testProperty "propRoundTripCols" $
     forAll genArray propRoundTripCols
+
+  , testProperty "arrayHasNoBottoms fails on arrays with a bottom" $
+    expectFailure $ arrayHasNoBottoms (listArray (0 :: Int, 0) [])
+
+  , testProperty "arrayByRows returns arrays with no bottoms" $
+    \ls -> arrayHasNoBottoms (arrayByRows () ls)
+
+  , testProperty "arrayByCols returns arrays with no bottoms" $
+    \ls -> arrayHasNoBottoms (arrayByCols () ls)
 
   , testProperty "mapTableNoChangeCols" $
     forAll (fmap Blind genLabelF) $ \(Blind f) ->

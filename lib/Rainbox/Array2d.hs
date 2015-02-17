@@ -181,18 +181,42 @@ rows ay = map getRow $ range (minRow, maxRow)
     ixsCols = range (minCol, maxCol)
     getRow ixRow = map (\cl -> ay ! (cl, ixRow)) ixsCols
 
--- | Generate a two-dimensional array from a list of rows.  Each row
--- must be of equal length; otherwise, the generated array will have
--- undefined elements.
+-- | Generate a two-dimensional array from a list of rows.  Every
+-- row's length will be equal to the length of the first row; any rows
+-- after the first row that are shorter than the first row will have
+-- extra columns appended to the end.  Therefore, the resulting
+-- 'Array' will have no undefined values.
 arrayByRows
-  :: [[a]]
+  :: a
+  -- ^ Append this empty value to rows that are too short.
+  -> [[a]]
+  -- ^ One list per row
   -> Array (Int, Int) a
-arrayByRows ls = array ((0,0), (colMax, rowMax)) $ indexRows ls
+arrayByRows empty ls
+  = array ((0,0), (colMax, rowMax))
+  . indexRows
+  . padder empty
+  $ ls
   where
     rowMax = length ls - 1
     colMax = case ls of
       [] -> -1
       x:_ -> length x - 1
+
+-- | Returns a list where every row is the same length as the first
+-- row.  Subsequent rows are padded on the end or have elements
+-- removed from the end, as needed.
+padder
+  :: a
+  -- ^ Empty element
+  -> [[a]]
+  -> [[a]]
+padder emp input = case input of
+  [] -> []
+  x:xs -> x : map adjust xs
+    where
+      len = length x
+      adjust ls = take len $ ls ++ repeat emp
 
 indexRows :: [[a]] -> [((Int, Int),a)]
 indexRows = concat . map f . zip [0 ..]
@@ -201,13 +225,22 @@ indexRows = concat . map f . zip [0 ..]
       where
         g (cl, a) = ((cl, rw), a)
 
--- | Generate a two-dimensional array from a list of columns.  Each
--- column must be of equal length; otherwise, the generated array
--- will have undefined elements.
+-- | Generate a two-dimensional array from a list of columns.  Every
+-- column will be the same height as the first column; subsequent
+-- colums will be padded or truncated on the bottom, as needed.
+-- Therefore the resulting 'Array' will have no undefined elements.
 arrayByCols
-  :: [[a]]
+  :: a
+  -- ^ Append this value to columns that are too short.
+  -> [[a]]
+  -- ^ One list per column; the head of each list is the top of the
+  -- column.
   -> Array (Int, Int) a
-arrayByCols ls = listArray ((0,0), (colMax, rowMax)) . concat $ ls
+arrayByCols empty ls
+  = listArray ((0,0), (colMax, rowMax))
+  . concat
+  . padder empty
+  $ ls
   where
     colMax = length ls - 1
     rowMax = case ls of

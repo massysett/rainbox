@@ -9,13 +9,12 @@ that](http://hackage.haskell.org/package/rainbow) before continuing.
 [boxes](http://hackage.haskell.org/package/boxes) is a similar
 package but without color support.
 
-This file is written in literate Haskell, so it compile and run for
-you.  It also means that the compiler checks the examples, which
+This file is written in literate Haskell, so you can compile and run
+it.  It also means that the compiler checks the examples, which
 keeps them accurate.  However, HsColour does not fare so well with
-literate Haskell, so this file will not look good from the
-hyperlinked source in Haddock.  You're better off viewing it from a
-text editor or through [the Gihub
-website](http://www.github.com/massysett/rainbox).
+literate Haskell, so this file will not look good from the hyperlinked
+source in Haddock.  You're better off viewing it from a text editor or
+through [the Gihub website](http://www.github.com/massysett/rainbox).
 
 A grid of boxes
 ===============
@@ -131,14 +130,14 @@ returns a list of `Cell`.  First let's make a small function that
 will make a function that returns a `Cell` with our desired
 defaults:
 
-> cell :: [Chunk] -> Chunk -> Cell
-> cell cks bck = Cell brs left top (backgroundFromChunk bck)
+> cell :: [Chunk] -> Radiant -> Cell
+> cell cks bck = Cell brs left top bck
 >   where
->     brs = map Bar . map ((:[]) . (<> bck)) $ cks
+>     brs = map Bar . map ((:[]) . (<> back bck)) $ cks
 
 
-> recordToCells :: Record -> Chunk -> [Cell]
-> recordToCells r ck = map ($ ck) $
+> recordToCells :: Record -> Radiant -> [Cell]
+> recordToCells r rad = map ($ rad) $
 >   [ cell . (:[]) . fromString . firstName $ r
 >   , cell . (:[]) $ (fromString (lastName r) <> bold)
 >   , cell . map fromString . address $ r
@@ -151,7 +150,7 @@ Zipping to get rows of cells
 ============================
 
 > cellRows :: [[Cell]]
-> cellRows = zipWith recordToCells records (cycle [mempty, fore yellow])
+> cellRows = zipWith recordToCells records (cycle [noColorRadiant, yellow])
 
 Adding white space between columns
 ==================================

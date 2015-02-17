@@ -17,7 +17,7 @@ barecheck :: Package
 barecheck = closedOpen "barecheck" [0,2,0,6] [0,3]
 
 rainbow :: Package
-rainbow = nextBreaking "rainbow" [0,20]
+rainbow = nextBreaking "rainbow" [0,20,4,0]
 
 terminfo :: Package
 terminfo = closedOpen "terminfo" [0,3,2] [0,5,0,0]
@@ -39,6 +39,9 @@ tasty_quickcheck = closedOpen "tasty-quickcheck" [0,8,1] [0,9]
 
 quickcheck :: Package
 quickcheck = closedOpen "QuickCheck" [2,7,5] [2,8]
+
+chasingBottoms :: Package
+chasingBottoms = closedOpen "ChasingBottoms" [1,3,0] [1,4]
 
 properties :: Properties
 properties = blank
@@ -91,6 +94,7 @@ testDeps = buildDepends $ libPackages ++
   , tasty_quickcheck
   , quickcheck
   , barecheck
+  , chasingBottoms
   ]
 
 library
@@ -151,12 +155,31 @@ mainTest ms = testSuite "rainbox-test"
   , mainIs "rainbox-test.hs"
   ]
 
+grid
+  :: FlagName
+  -- ^ Grid flag
+  -> [String]
+  -- ^ All modules
+  -> Section
+grid fl ms = executable "rainbox-grid" $
+  [ mainIs "rainbox-grid.hs"
+  , ghcOpts
+  , hsSourceDirs ["test", "lib"]
+  , haskell2010
+  , testDeps
+  ]
+
 main :: IO ()
 main = defaultMain $ do
   ms <- modules "lib"
   ts <- modules "test"
-  fl <- makeFlag "mosaic" $ FlagOpts
+  flagMosaic <- makeFlag "mosaic" $ FlagOpts
     { flagDescription = "Build the rainbox-mosaic executable"
+    , flagDefault = False
+    , flagManual = True
+    }
+  flagGrid <- makeFlag "grid" $ FlagOpts
+    { flagDescription = "Build the rainbox-grid executable"
     , flagDefault = False
     , flagManual = True
     }
@@ -164,8 +187,9 @@ main = defaultMain $ do
     ( properties
     , library ms
     , [ visual (ms ++ ts)
-      , mosaic fl (ms ++ ts)
+      , mosaic flagMosaic (ms ++ ts)
       , mainTest (ms ++ ts)
       , githubHead "massysett" "rainbox"
+      , grid flagGrid (ms ++ ts)
       ]
     )

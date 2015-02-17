@@ -9,7 +9,7 @@ import Rainbow
 import qualified Data.Text as X
 import qualified Rainbow.Generators as G
 import Rainbox.Box.Primitives
-import Rainbox.Box (backgroundToTextSpec)
+import Data.Monoid
 
 genText :: Gen X.Text
 genText = fmap X.pack $ listOf c
@@ -31,12 +31,9 @@ genWidth = fmap Width $ frequency [(3, nonNeg), (1, neg)]
     nonNeg = fmap abs arbitrarySizedIntegral
     neg = fmap (negate . abs) arbitrarySizedIntegral
 
-genBackground :: Gen Background
-genBackground = fmap Background G.radiant
-
 -- | Generates blank Box.
 genBlankBox :: Gen Box
-genBlankBox = liftM3 blank genBackground rw cl
+genBlankBox = liftM3 blank G.radiant rw cl
   where
     rw = fmap (Height . abs) arbitrarySizedIntegral
     cl = fmap (Width . abs) arbitrarySizedIntegral
@@ -48,7 +45,7 @@ genChunkBox = fmap chunks $ listOf genChunk
 -- | Generates a box using catH.
 genCatHBox :: Gen Box
 genCatHBox = sized $ \s -> do
-  bk <- genBackground
+  bk <- G.radiant
   av <- genAlignVert
   bs <- listOf (resize (s `div` 2) genBox)
   return $ catH bk av bs
@@ -56,7 +53,7 @@ genCatHBox = sized $ \s -> do
 -- | Generates a box using catV.
 genCatVBox :: Gen Box
 genCatVBox = sized $ \s -> do
-  bk <- genBackground
+  bk <- G.radiant
   ah <- genAlignHoriz
   bs <- listOf (resize (s `div` 2) genBox)
   return $ catV bk ah bs
@@ -65,11 +62,10 @@ genCatVBox = sized $ \s -> do
 genBox :: Gen Box
 genBox = oneof [ genBlankBox, genCatHBox, genCatVBox, genChunkBox ]
 
-genChunkLen :: Background -> Int -> Gen Chunk
+genChunkLen :: Radiant -> Int -> Gen Chunk
 genChunkLen bk l = do
-  let ts = backgroundToTextSpec bk
   txt <- fmap X.pack $ vectorOf l (elements ['0'..'Z'])
-  return $ Chunk ts [txt]
+  return $ (fromText txt) <> back bk
 
 -- | Generates a box of text; its horizontal and vertical size
 -- depends on the size parameter.
@@ -77,10 +73,10 @@ genTextBox :: Gen Box
 genTextBox = do
   w <- fmap abs arbitrarySizedIntegral
   h <- fmap abs arbitrarySizedIntegral
-  bk <- genBackground
+  bk <- G.radiant
   cks <- vectorOf h (genChunkLen bk w)
   let bxs = map (chunks . (:[])) cks
-  bk' <- genBackground
+  bk' <- G.radiant
   return $ catV bk' left bxs
 
 
@@ -106,7 +102,7 @@ biggest m g = sized $ \s -> resize (min s m) g
 
 data Inputs = Inputs
   { iChunks :: [Chunk]
-  , iBackground :: Background
+  , iBackground :: Radiant
   , iHeight :: Height
   , iWidth :: Width
   , iVert :: Align Vert
@@ -119,7 +115,7 @@ data Inputs = Inputs
 instance Arbitrary Inputs where
   arbitrary = Inputs
     <$> listOf genChunk
-    <*> genBackground
+    <*> G.radiant
     <*> genHeight
     <*> genWidth
     <*> genAlignVert

@@ -11,6 +11,7 @@ import Test.QuickCheck.Random
 import Rainbox.Box.PrimitivesTests
 import Data.String
 import Data.Word (Word8)
+import qualified Rainbow.Colors.Generators as RG
 
 colors = fore yellow <> back blue
 
@@ -20,17 +21,13 @@ midwidth = "medium width box" <> colors
 
 wide = "a wide box, see how wide I am?" <> colors
 
-greenBack = Background (Radiant green8 Nothing)
-
-yellowBack = Background (Radiant yellow8 Nothing)
-
 all3 = [narrow, midwidth, wide]
 
 short = chunk narrow
 
-midheight = catV greenBack left . map chunk $ [narrow, midwidth]
+midheight = catV green left . map chunk $ [narrow, midwidth]
 
-tall = catV greenBack left . map chunk $ [narrow, midwidth, wide]
+tall = catV green left . map chunk $ [narrow, midwidth, wide]
 
 sizeParam = 7
 
@@ -43,16 +40,16 @@ describe s b = do
   putBox b
   putStrLn ""
 
-testCompound :: String -> (Background -> [Box] -> Box) -> IO ()
+testCompound :: String -> (Radiant -> [Box] -> Box) -> IO ()
 testCompound d f = do
   g <- newQCGen
   let bxs = unGen (replicateM 5 genTextBox) g sizeParam 
-      bk = unGen genBackground g sizeParam
+      bk = unGen RG.radiant g sizeParam
   describe d $ f bk bxs
 
 testVert
   :: String
-  -> (Background -> Align Vert -> [Box] -> Box)
+  -> (Radiant -> Align Vert -> [Box] -> Box)
   -> IO ()
 testVert d f = do
   testCompound (d ++ ", top align") (\bk bxs -> f bk top bxs)
@@ -61,7 +58,7 @@ testVert d f = do
 
 testHoriz
   :: String
-  -> (Background -> Align Horiz -> [Box] -> Box)
+  -> (Radiant -> Align Horiz -> [Box] -> Box)
   -> IO ()
 testHoriz d f = do
   testCompound (d ++ ", left align") (\bk bxs -> f bk left bxs)
@@ -70,7 +67,7 @@ testHoriz d f = do
 
 -- | Makes a 10x10 test box.
 testBox :: Box
-testBox = catV defaultBackground left . map mkLine $ clrs
+testBox = catV noColorRadiant left . map mkLine $ clrs
   where
     mkLine clr = chunk $ txt <> clr
     txt = fromString ['0'..'9']
@@ -123,9 +120,7 @@ tests = do
   testVert "punctuateH" (\bk av bxs -> punctuateH bk av " " bxs)
   testHoriz "punctuateV" (\bk ah bxs -> punctuateV bk ah " " bxs)
 
-  let grn = Background (Radiant green8 Nothing)
-
-  testHoriz "column" (\bk ah bxs -> catV defaultBackground left
+  testHoriz "column" (\bk ah bxs -> catV noColorRadiant left
                         (column bk ah bxs))
 
   describe "original box for following tests, 10x10" testBox
@@ -136,17 +131,17 @@ tests = do
   singleV "viewV, 3" (\av -> viewV 3 av testBox)
 
   single "grow, 13x13"
-    (\av ah -> grow grn (Height 13) (Width 13) av ah testBox)
-  singleH "growH, 13" (\ah -> growH grn 13 ah testBox)
-  singleV "growV, 13" (\av -> growV grn 13 av testBox)
+    (\av ah -> grow green (Height 13) (Width 13) av ah testBox)
+  singleH "growH, 13" (\ah -> growH green 13 ah testBox)
+  singleV "growV, 13" (\av -> growV green 13 av testBox)
 
   single "resize, 13x13"
-    (\av ah -> resize grn (Height 13) (Width 13) av ah testBox)
-  singleH "resizeH, 13" (\ah -> resizeH grn 13 ah testBox)
-  singleV "resizeV, 13" (\av -> resizeV grn 13 av testBox)
+    (\av ah -> resize green (Height 13) (Width 13) av ah testBox)
+  singleH "resizeH, 13" (\ah -> resizeH green 13 ah testBox)
+  singleV "resizeV, 13" (\av -> resizeV green 13 av testBox)
 
   single "resize, 7x7"
-    (\av ah -> resize grn (Height 7) (Width 7) av ah testBox)
-  singleH "resizeH, 7" (\ah -> resizeH grn 7 ah testBox)
-  singleV "resizeV, 7" (\av -> resizeV grn 7 av testBox)
+    (\av ah -> resize green (Height 7) (Width 7) av ah testBox)
+  singleH "resizeH, 7" (\ah -> resizeH green 7 ah testBox)
+  singleV "resizeV, 7" (\av -> resizeV green 7 av testBox)
 
