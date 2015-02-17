@@ -10,6 +10,8 @@ before_install:
   - packdeps rainbox.cabal
 
 install:
+  - cabal install --only-dependencies
+  - ghc-pkg list
   - cabal install --only-dependencies --enable-tests
 
 script:
