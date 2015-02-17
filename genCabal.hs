@@ -13,6 +13,9 @@ pkgVersion = [0,10,0,0]
 base :: Package
 base = closedOpen "base" [4,5,0,0] [4,8,0,0]
 
+barecheck :: Package
+barecheck = closedOpen "barecheck" [0,2,0,6] [0,3]
+
 rainbow :: Package
 rainbow = nextBreaking "rainbow" [0,20]
 
@@ -36,9 +39,6 @@ tasty_quickcheck = closedOpen "tasty-quickcheck" [0,8,1] [0,9]
 
 quickcheck :: Package
 quickcheck = closedOpen "QuickCheck" [2,7,5] [2,8]
-
-random :: Package
-random = closedOpen "random" [1,0,0,0] [1,2]
 
 properties :: Properties
 properties = blank
@@ -73,13 +73,24 @@ properties = blank
 ghcOpts :: HasBuildInfo a => a
 ghcOpts = ghcOptions ["-Wall"]
 
-libDeps :: HasBuildInfo a => a
-libDeps = buildDepends
+libPackages :: [Package]
+libPackages =
   [ base
   , rainbow
   , text
   , transformers
   , array
+  ]
+
+libDeps :: HasBuildInfo a => a
+libDeps = buildDepends libPackages
+
+testDeps :: HasBuildInfo a => a
+testDeps = buildDepends $ libPackages ++
+  [ tasty
+  , tasty_quickcheck
+  , quickcheck
+  , barecheck
   ]
 
 library
@@ -105,13 +116,7 @@ visual ms = testSuite "rainbox-visual" $
   , mainIs "rainbox-visual.hs"
   , hsSourceDirs ["test", "lib"]
   , haskell2010
-  , libDeps
-  , buildDepends
-    [ tasty
-    , tasty_quickcheck
-    , quickcheck
-    , random
-    ]
+  , testDeps
   ]
 
 mosaic
@@ -127,13 +132,7 @@ mosaic mosaic ms = executable "rainbox-mosaic"
     , [ otherModules ms
       , hsSourceDirs ["test", "lib"]
       , haskell2010
-      , libDeps
-      , buildDepends
-        [ tasty
-        , tasty_quickcheck
-        , quickcheck
-        , random
-        ]
+      , testDeps
       ]
     )
     [ buildable False]
@@ -148,13 +147,8 @@ mainTest ms = testSuite "rainbox-test"
   , exitcodeStdio
   , hsSourceDirs ["test", "lib"]
   , haskell2010
-  , libDeps
+  , testDeps
   , mainIs "rainbox-test.hs"
-  , buildDepends
-    [ tasty
-    , tasty_quickcheck
-    , quickcheck
-    ]
   ]
 
 main :: IO ()

@@ -4,17 +4,15 @@
 -- it out. Always uses colors.
 module Main where
 
-import Test.QuickCheck.Gen
+import Test.QuickCheck
 import Rainbox.Box.PrimitivesTests
 import System.Environment
-import System.Random
 import Rainbox.Box
-import System.Console.Rainbow
+import Rainbow
 
 main :: IO ()
 main = do
-  g <- newStdGen
   s:[] <- getArgs
-  let bx = unGen genBox g (read s)
+  bx <- generate (Test.QuickCheck.resize (read s) genBox)
   e <- termFromEnv
   putChunks e . render $ bx
