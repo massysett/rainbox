@@ -163,10 +163,14 @@ grid
   -> Section
 grid fl ms = executable "rainbox-grid" $
   [ mainIs "rainbox-grid.hs"
-  , ghcOpts
-  , hsSourceDirs ["test", "lib"]
-  , haskell2010
-  , testDeps
+  , condBlock (flag fl)
+    ( ghcOpts
+    , [ hsSourceDirs ["test", "lib"]
+      , haskell2010
+      , testDeps
+      ]
+    )
+    [ buildable False ]
   ]
 
 main :: IO ()
