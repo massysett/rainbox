@@ -6,7 +6,7 @@ import Cartel
 
 -- Package version
 pkgVersion :: [Word]
-pkgVersion = [0,12,0,0]
+pkgVersion = [0,10,0,2]
 
 -- Dependencies
 
