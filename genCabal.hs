@@ -6,18 +6,18 @@ import Cartel
 
 -- Package version
 pkgVersion :: [Word]
-pkgVersion = [0,10,0,0]
+pkgVersion = [0,10,0,2]
 
 -- Dependencies
 
 base :: Package
 base = closedOpen "base" [4,5,0,0] [4,8,0,0]
 
-barecheck :: Package
-barecheck = closedOpen "barecheck" [0,2,0,6] [0,3]
+bytestring :: Package
+bytestring = closedOpen "bytestring" [0,10] [0,11]
 
 rainbow :: Package
-rainbow = nextBreaking "rainbow" [0,20,4,0]
+rainbow = nextBreaking "rainbow" [0,22]
 
 terminfo :: Package
 terminfo = closedOpen "terminfo" [0,3,2] [0,5,0,0]
@@ -38,7 +38,7 @@ tasty_quickcheck :: Package
 tasty_quickcheck = closedOpen "tasty-quickcheck" [0,8,1] [0,9]
 
 quickcheck :: Package
-quickcheck = closedOpen "QuickCheck" [2,7,5] [2,8]
+quickcheck = closedOpen "QuickCheck" [2,7] [2,9]
 
 chasingBottoms :: Package
 chasingBottoms = closedOpen "ChasingBottoms" [1,3,0] [1,4]
@@ -80,6 +80,7 @@ libPackages :: [Package]
 libPackages =
   [ base
   , rainbow
+  , bytestring
   , text
   , transformers
   , array
@@ -93,7 +94,6 @@ testDeps = buildDepends $ libPackages ++
   [ tasty
   , tasty_quickcheck
   , quickcheck
-  , barecheck
   , chasingBottoms
   ]
 

@@ -71,6 +71,7 @@ module Rainbox.Box.Primitives
 
 import qualified Data.Foldable as F
 import Rainbow
+import Rainbow.Types
 import Data.Monoid
 import qualified Data.Text as X
 import Data.String
@@ -194,7 +195,7 @@ class HasWidth a where
   width :: a -> Int
 
 instance HasWidth Bar where
-  width = sum . map (sum . map X.length . text) . unBar
+  width = sum . map (sum . map X.length . chunkTexts) . unBar
 
 instance HasWidth Box where
   width b = case unBox b of
@@ -204,7 +205,7 @@ instance HasWidth Box where
       x:_ -> width x
 
 instance HasWidth Chunk where
-  width = sum . map X.length . text
+  width = sum . map X.length . chunkTexts
 
 -- # Making Boxes
 
@@ -507,7 +508,7 @@ dropChars colsIn = Rod . go colsIn . unRod
 
 -- | Drops the given number of characters from a Chunk.
 dropChunkChars :: Int -> Chunk -> Chunk
-dropChunkChars n c = c { text = go n (text c) }
+dropChunkChars n c = c { chunkTexts = go n (chunkTexts c) }
   where
     go nLeft ls = case ls of
       [] -> []
@@ -538,7 +539,7 @@ takeChars colsIn = Rod . go colsIn . unRod
                     Nibble . Right . takeChunkChars n $ chk)
 
 takeChunkChars :: Int -> Chunk -> Chunk
-takeChunkChars n c = c { text = go n (text c) }
+takeChunkChars n c = c { chunkTexts = go n (chunkTexts c) }
   where
     go nLeft ls = case ls of
       [] -> []

@@ -105,7 +105,7 @@ import Rainbox.Box.Primitives
   , Width(..)
   , unBox
   )
-import qualified System.IO as IO
+import qualified Data.ByteString as BS
 
 --
 -- # Box making
@@ -325,8 +325,8 @@ punctuateV
   -> Box
 punctuateV bk a sep = B.catV bk a . intersperse sep
 
--- | Convert a 'Box' to Rainbow 'Chunk's.  You can then print it
--- using 'putChunks' or the like.
+-- | Convert a 'Box' to Rainbow 'Chunk's.  You can then print it, as
+-- described in "Rainbow".
 render :: Box -> [Chunk]
 render bx = case unBox bx of
   B.NoHeight _ -> []
@@ -339,14 +339,13 @@ renderRod = map toChunk . B.unRod
   where
     toChunk = either spcToChunk id . B.unNibble
     spcToChunk ss =
-      fromText (X.replicate (B.numSpaces ss) (X.singleton ' '))
+      chunkFromText (X.replicate (B.numSpaces ss) (X.singleton ' '))
       <> back (B.spcBackground ss)
 
--- | Prints a Box to standard output.  If standard output is not a
--- terminal, no colors are used.  Otherwise, colors are used if your
--- TERM environment variable suggests they are available.
+-- | Prints a Box to standard output.  The highest number of available
+-- colors are used, using 'byteStringMakerFromEnvironment' from
+-- "Rainbow".
 printBox :: Box -> IO ()
 printBox b = do
-  t <- smartTermFromEnv IO.stdout
-  hPutChunks IO.stdout t . render $ b
-
+  mkr <- byteStringMakerFromEnvironment
+  mapM_ BS.putStr . chunksToByteStrings mkr . render $ b

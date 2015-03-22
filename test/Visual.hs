@@ -5,13 +5,12 @@ module Visual where
 import Control.Monad
 import Rainbox.Box
 import Rainbow
-import Data.Monoid
+import Test.QuickCheck hiding (resize)
 import Test.QuickCheck.Gen hiding (resize)
 import Test.QuickCheck.Random
 import Rainbox.Box.PrimitivesTests
+import Rainbow.Instances ()
 import Data.String
-import Data.Word (Word8)
-import qualified Rainbow.Colors.Generators as RG
 
 colors = fore yellow <> back blue
 
@@ -31,20 +30,16 @@ tall = catV green left . map chunk $ [narrow, midwidth, wide]
 
 sizeParam = 7
 
-putBox b = do
-  term <- termFromEnv
-  putChunks term . render $ b
-
 describe s b = do
   putStrLn (s ++ ":")
-  putBox b
+  printBox b
   putStrLn ""
 
 testCompound :: String -> (Radiant -> [Box] -> Box) -> IO ()
 testCompound d f = do
   g <- newQCGen
   let bxs = unGen (replicateM 5 genTextBox) g sizeParam 
-      bk = unGen RG.radiant g sizeParam
+      bk = unGen arbitrary g sizeParam
   describe d $ f bk bxs
 
 testVert
