@@ -6,7 +6,7 @@ module Rainbox.Instances where
 
 import Control.Monad
 import Test.QuickCheck
-import Rainbow.QuickCheck ()
+import Rainbow.Instances ()
 import Rainbox
 import Rainbox.Box
 

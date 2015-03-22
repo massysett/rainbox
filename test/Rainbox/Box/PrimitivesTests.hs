@@ -6,10 +6,10 @@ import Test.Tasty
 import Test.Tasty.QuickCheck (testProperty)
 import Test.QuickCheck
 import Rainbow
+import Rainbow.Instances ()
+import Rainbow.Types
 import qualified Data.Text as X
-import qualified Rainbow.Generators as G
 import Rainbox.Box.Primitives
-import Data.Monoid
 
 genText :: Gen X.Text
 genText = fmap X.pack $ listOf c
@@ -17,7 +17,7 @@ genText = fmap X.pack $ listOf c
     c = elements ['0'..'Z']
 
 genChunk :: Gen Chunk
-genChunk = G.chunk
+genChunk = arbitrary
 
 genHeight :: Gen Height
 genHeight = fmap Height $ frequency [(3, nonNeg), (1, neg)]
@@ -33,7 +33,7 @@ genWidth = fmap Width $ frequency [(3, nonNeg), (1, neg)]
 
 -- | Generates blank Box.
 genBlankBox :: Gen Box
-genBlankBox = liftM3 blank G.radiant rw cl
+genBlankBox = liftM3 blank arbitrary rw cl
   where
     rw = fmap (Height . abs) arbitrarySizedIntegral
     cl = fmap (Width . abs) arbitrarySizedIntegral
@@ -45,7 +45,7 @@ genChunkBox = fmap chunks $ listOf genChunk
 -- | Generates a box using catH.
 genCatHBox :: Gen Box
 genCatHBox = sized $ \s -> do
-  bk <- G.radiant
+  bk <- arbitrary
   av <- genAlignVert
   bs <- listOf (resize (s `div` 2) genBox)
   return $ catH bk av bs
@@ -53,7 +53,7 @@ genCatHBox = sized $ \s -> do
 -- | Generates a box using catV.
 genCatVBox :: Gen Box
 genCatVBox = sized $ \s -> do
-  bk <- G.radiant
+  bk <- arbitrary
   ah <- genAlignHoriz
   bs <- listOf (resize (s `div` 2) genBox)
   return $ catV bk ah bs
@@ -65,7 +65,7 @@ genBox = oneof [ genBlankBox, genCatHBox, genCatVBox, genChunkBox ]
 genChunkLen :: Radiant -> Int -> Gen Chunk
 genChunkLen bk l = do
   txt <- fmap X.pack $ vectorOf l (elements ['0'..'Z'])
-  return $ (fromText txt) <> back bk
+  return $ (chunkFromText txt) <> back bk
 
 -- | Generates a box of text; its horizontal and vertical size
 -- depends on the size parameter.
@@ -73,10 +73,10 @@ genTextBox :: Gen Box
 genTextBox = do
   w <- fmap abs arbitrarySizedIntegral
   h <- fmap abs arbitrarySizedIntegral
-  bk <- G.radiant
+  bk <- arbitrary
   cks <- vectorOf h (genChunkLen bk w)
   let bxs = map (chunks . (:[])) cks
-  bk' <- G.radiant
+  bk' <- arbitrary
   return $ catV bk' left bxs
 
 
@@ -115,7 +115,7 @@ data Inputs = Inputs
 instance Arbitrary Inputs where
   arbitrary = Inputs
     <$> listOf genChunk
-    <*> G.radiant
+    <*> arbitrary
     <*> genHeight
     <*> genWidth
     <*> genAlignVert
@@ -151,7 +151,7 @@ tests = testGroup "BoxTests"
 
     , testProperty "makes Box with cols == number of characters" $ \i ->
       let cks = iChunks i
-          nChars = sum . map X.length . concat . map text $ cks
+          nChars = sum . map X.length . concat . map chunkTexts $ cks
       in (== nChars) . width $ chunks cks
     ]
 

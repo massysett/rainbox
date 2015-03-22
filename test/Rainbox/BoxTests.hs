@@ -5,7 +5,7 @@ import Rainbox.Box.PrimitivesTests
 import qualified Data.Text as X
 import Test.Tasty.QuickCheck (testProperty)
 import Test.Tasty
-import Rainbow
+import Rainbow.Types
 import Test.QuickCheck hiding (resize)
 
 tests :: TestTree
@@ -35,7 +35,7 @@ tests = testGroup "RainboxTests"
       (== 1) . height . chunk . iChunk
 
     , testProperty "makes Box as wide as characters in chunk" $ \i ->
-      let cs = sum . map X.length . text . iChunk $ i
+      let cs = sum . map X.length . chunkTexts . iChunk $ i
       in (== cs) . width . chunk . iChunk $ i
     ]
 
