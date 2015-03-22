@@ -38,7 +38,7 @@ tasty_quickcheck :: Package
 tasty_quickcheck = closedOpen "tasty-quickcheck" [0,8,1] [0,9]
 
 quickcheck :: Package
-quickcheck = closedOpen "QuickCheck" [2,8] [2,9]
+quickcheck = closedOpen "QuickCheck" [2,7] [2,9]
 
 chasingBottoms :: Package
 chasingBottoms = closedOpen "ChasingBottoms" [1,3,0] [1,4]
