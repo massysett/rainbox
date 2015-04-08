@@ -86,6 +86,9 @@ module Rainbox.Box
   , resizeH
   , resizeV
 
+  -- * Sequence utilities
+  , intersperse
+
   -- * Printing Boxes
   , render
   , printBox
@@ -93,7 +96,6 @@ module Rainbox.Box
 
 import Control.Monad (join)
 import Data.Monoid
-import Data.List (intersperse)
 import qualified Data.Text as X
 import Rainbow
 import qualified Rainbox.Box.Primitives as B
@@ -317,7 +319,7 @@ punctuateH
   -> Box
   -> Seq Box
   -> Box
-punctuateH bk a sep = B.catH bk a . intersperseSeq sep
+punctuateH bk a sep = B.catH bk a . intersperse sep
 
 -- | A vertical version of 'punctuateH'.
 punctuateV
@@ -327,13 +329,14 @@ punctuateV
   -> Box
   -> Seq Box
   -> Box
-punctuateV bk a sep = B.catV bk a . intersperseSeq sep
+punctuateV bk a sep = B.catV bk a . intersperse sep
 
-intersperseSeq
+-- | Like 'Data.List.intersperse' but works on a 'Seq'.
+intersperse
   :: a
   -> Seq a
   -> Seq a
-intersperseSeq a sq = case viewl sq of
+intersperse a sq = case viewl sq of
   EmptyL -> Seq.empty
   x :< xs -> x <| go xs
   where

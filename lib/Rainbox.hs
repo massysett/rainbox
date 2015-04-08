@@ -41,8 +41,9 @@ module Rainbox
   -- complex needs.
   , gridByRows
   , gridByCols
-  , boxCells
-  , glueBoxes
+
+  -- * Sequence utilities
+  , intersperse
 
   -- * Rendering
   , render
@@ -51,23 +52,27 @@ module Rainbox
 
 import Rainbow.Colors
 import Rainbox.Box
-import Rainbox.Array2d
-import Data.Array
+import Data.Monoid
 import Data.String
+import Data.Sequence (Seq, viewl, ViewL(..))
+import qualified Data.Sequence as Seq
+import Data.Map.Strict (Map)
+import qualified Data.Map.Strict as M
+import qualified Data.Foldable as F
 
 -- | A 'Cell' consists of multiple screen lines; each screen line is
 -- a 'Bar'.
 data Cell = Cell
-  { bars :: [Bar]
+  { bars :: Seq Bar
   -- ^ Each Bar is one line on the screen.
-
-  , horiz :: Align Horiz
-  -- ^ How this Cell aligns compared to the other Cell in its
-  -- column; use 'left', 'center', or 'right'.
 
   , vert :: Align Vert
   -- ^ How this Cell aligns compared to other Cell in its row; use
   -- 'top', 'center', or 'bottom'.
+
+  , horiz :: Align Horiz
+  -- ^ How this Cell aligns compared to the other Cell in its
+  -- column; use 'left', 'center', or 'right'.
 
   , background :: Radiant
   -- ^ Background color for necessary padding that is added to the
@@ -76,50 +81,21 @@ data Cell = Cell
   -- that are designated in the 'Chunk' itself.
   } deriving (Eq, Show)
 
+instance HasWidth Cell where
+  width cl
+    | Seq.null (bars cl) = 0
+    | otherwise = F.maximum . fmap width . bars $ cl
+
 -- | Creates a Cell with a 'left' horizontal alignment, a 'top'
 -- vertical alignment, and a background of 'noColorRadianat'.  The
 -- cell will be one 'Bar' tall and contain the text given in the
 -- string.
 instance IsString Cell where
-  fromString s = Cell [(fromString s)] left top noColorRadiant
+  fromString s = Cell (Seq.singleton (fromString s)) top left noColorRadiant
 
 -- | Returns the width of each 'Bar' in the 'Cell'.
-cellWidths :: Cell -> [Int]
-cellWidths = map width . bars
-
--- | Transforms a grid of 'Cell' to a grid of 'Box' by adding
--- necessary padding to each 'Cell'.  In every row of the array, all
--- the 'Box' will have equal height; in every column of the array,
--- all the 'Box' will have equal width.
-boxCells
-  :: (Ix col, Ix row)
-  => Array (col, row) Cell
-  -> Array (col, row) Box
-boxCells ay = cells $ mapTable conv tbl
-  where
-    tbl = table getWidth getHeight ay
-      where
-        getWidth _ = maximum . (0:) . concat . map cellWidths . map snd
-        getHeight _ = maximum . (0:) . map (length . bars . snd)
-    conv lCol lRow _ _ c = grow bk (Height lRow) (Width lCol) av ah bx
-      where
-        Cell bs ah av bk = c
-        bx = barsToBox bk ah bs
-
--- | Use 'catH' and 'catV' to fuse an array of 'Box' into a single
--- 'Box'.  For example, if the 'bounds' of the array are
--- @((0,0),(3,5))@, then the array has the number of cells given by
--- @rangeSize ((0,0), (3,5))@ (that is, 24).  The upper left corner
--- is @(0,0)@ and the lower right corner is @(3,5)@; the upper right
--- and lower left corners are @(3,0)@ and @(0,5)@, respectively.
-glueBoxes
-  :: (Ix col, Ix row)
-  => Array (col, row) Box
-  -> Box
-glueBoxes
-  = catH noColorRadiant top
-  . map (catV noColorRadiant left)
-  . cols
+cellWidths :: Cell -> Seq Int
+cellWidths = fmap width . bars
 
 -- | Creates a single 'Box' from a list of rows of 'Cell'.  Each list
 -- is a row of 'Cell'.  The list of rows is from top to bottom; within
@@ -129,8 +105,18 @@ glueBoxes
 -- is shorter than the first row will be padded with empty cells on
 -- the end.
 
-gridByRows :: [[Cell]] -> Box
-gridByRows = glueBoxes . boxCells . arrayByRows padCell
+-- TODO equalize
+gridByRows :: Seq (Seq Cell) -> Box
+gridByRows sqnce = glue . fmap mkRow $ sqnce
+  where
+    glue = catV noColorRadiant left . fmap (catH noColorRadiant top)
+
+    mkRow = applyToLargestValues getHeight widthMap cellToBox
+      where
+        getHeight = Height . Seq.length . bars
+
+    widthMap = largestByIndex (Width . width) sqnce
+
 
 -- | Creates a single 'Box' from a list of columns of 'Cell'.  Each
 -- list is a column of 'Cell'.  The list of columns is from left to
@@ -140,8 +126,92 @@ gridByRows = glueBoxes . boxCells . arrayByRows padCell
 -- off the bottom, and any column that is shorter than the first
 -- column will be padded on the bottom with blank cells.
 
-gridByCols :: [[Cell]] -> Box
-gridByCols = glueBoxes . boxCells . arrayByCols padCell
+gridByCols :: Seq (Seq Cell) -> Box
+gridByCols = undefined
+--gridByCols = glueBoxes . boxCells . arrayByCols padCell
+
+-- | Examines a sequence to determine the length of the first
+-- sequence.  Fails if the seuence is empty.
+lengthOfFirst :: Seq (Seq a) -> Maybe Int
+lengthOfFirst sq = case viewl sq of
+  EmptyL -> Nothing
+  x :< _ -> Just $ Seq.length x
+
+emptyBox :: Box
+emptyBox = blank noColorRadiant (Height 0) (Width 0)
+
+-- | Make every 'Seq' as long as the given length, using the given
+-- element as padding.
+equalizeLengths :: Int -> a -> Seq (Seq a) -> Seq (Seq a)
+equalizeLengths tgt pad = fmap padder
+  where
+    padder sq
+      | len > tgt = Seq.take tgt sq
+      | otherwise = sq <> Seq.replicate (tgt - len) pad
+      where
+        len = Seq.length sq
+
+-- | Given a map of largest values for each index, a Seq of values,
+-- and a function to calculate the largest value for that Seq, and a
+-- function that takes those values and computes a new value, run the
+-- computation.
+
+applyToLargestValues
+  :: (Ord b, Ord c)
+  => (a -> b)
+  -- ^ Find the value for item in this Seq
+  -> Map Int c
+  -- ^ Largest values by index
+  -> (b -> c -> a -> d)
+  -- ^ Processor
+  -> Seq a
+  -> Seq d
+applyToLargestValues getVal mpLargest f sq = Seq.mapWithIndex k sq
+  where
+    thisLargest = F.maximum . fmap getVal $ sq
+    k idx = f thisLargest (mpLargest M.! idx)
+
+
+cellToBox
+  :: Height
+  -> Width
+  -> Cell
+  -> Box
+cellToBox h w c = grow (background c) h w (vert c) (horiz c)
+  $ barsToBox (background c) (horiz c) (bars c)
+  
+
+
+-- | Creates a map where every key has the largest value for the given
+-- index.
+largestByIndex
+  :: Ord b
+  => (a -> b)
+  -- ^ Calculates the value we're interested in
+  -> Seq (Seq a)
+  -> Map Int b
+largestByIndex get = F.foldl' procOuterSeq M.empty
+  where
+    procOuterSeq outerMap = Seq.foldlWithIndex procItem outerMap
+      where
+        procItem mp idx item = case M.lookup idx mp of
+          Nothing -> update
+          Just oldVal -> if val > oldVal then update else mp
+          where
+            val = get item
+            update = M.insert idx val mp
+
+{-
+makeColsFromRows
+  :: Int
+  -- ^ Number of columns
+  -> Seq (Seq a)
+  -> Seq (Seq a)
+makeColsFromRows nCols sq = fmap mkCol . Seq.fromList $ [0 .. nCols - 1]
+  where
+    mkCol idx = fmap (\rw -> rw `Seq.index` idx) sq
+-}
+
 
 padCell :: Cell
-padCell = Cell [] left top noColorRadiant
+padCell = Cell Seq.empty top left noColorRadiant

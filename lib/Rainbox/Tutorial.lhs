@@ -30,7 +30,7 @@ you can use `Rainbox`, which only allows you to create grids of
 boxes, like a spreadsheet.  This tutorial will show you how to use
 the `Rainbox` module.  Everything you need from this package will be
 available from the `Rainbox` module.  You will also need to import
-packages from `rainbow`:
+modules from `rainbow`:
 
 > {-# LANGUAGE OverloadedStrings #-}
 > -- | If you are viewing this module in Haddock, note
@@ -43,8 +43,9 @@ packages from `rainbow`:
 
 > module Rainbox.Tutorial where
 >
-> import Data.List (intersperse)
 > import Data.Monoid
+> import Data.Sequence (Seq)
+> import qualified Data.Sequence as Seq
 > import Data.String
 > import Rainbow
 > import Rainbox
@@ -59,7 +60,7 @@ account balances.  This type holds the data we're interested in:
 > data Record = Record
 >   { firstName :: String
 >   , lastName :: String
->   , address :: [String]
+>   , address :: Seq String
 >   , phone :: String
 >   , email :: String
 >   , balance :: String
@@ -67,12 +68,12 @@ account balances.  This type holds the data we're interested in:
 
 And let's make a list of some sample data:
 
-> records :: [Record]
-> records =
+> records :: Seq Record
+> records = Seq.fromList
 >   [ Record
 >       { firstName = "Nell"
 >       , lastName = "Langston"
->       , address = [ "Owings Mills, MD 21117" ]
+>       , address = Seq.singleton "Owings Mills, MD 21117"
 >       , phone = "800-588-2300"
 >       , email = "NellJLangston@dayrep.com"
 >       , balance = "0"
@@ -81,7 +82,7 @@ And let's make a list of some sample data:
 >   , Record
 >       { firstName = "Sharon"
 >       , lastName = "Sutton"
->       , address = [ "37 Church Street", "Flushing, NY 11354" ]
+>       , address = Seq.fromList [ "37 Church Street", "Flushing, NY 11354" ]
 >       , phone = "312-555-8100"
 >       , email = "SharonJSutton@teleworm.us"
 >       , balance = "1033.54"
@@ -90,7 +91,8 @@ And let's make a list of some sample data:
 >   , Record
 >       { firstName = "Barack"
 >       , lastName = "Obama"
->       , address = [ "1600 Pennsylvania Ave NW", "Washington, DC" ]
+>       , address = Seq.fromList
+>           [ "1600 Pennsylvania Ave NW", "Washington, DC" ]
 >       , phone = "877-CASH-NOW"
 >       , email = "president@whitehouse.gov"
 >       , balance = "23562.00"
@@ -99,7 +101,7 @@ And let's make a list of some sample data:
 >   , Record
 >       { firstName = "Bert and Ernie"
 >       , lastName = "Sesame"
->       , address = [ "123 Sesame Street", "Lower Level",
+>       , address = Seq.fromList [ "123 Sesame Street", "Lower Level",
 >                     "Sesame, WN V6B432" ]
 >       , phone = "+45-123-4567"
 >       , email = "lower@rhyta.com"
@@ -109,7 +111,8 @@ And let's make a list of some sample data:
 >   , Record
 >       { firstName = "Vip"
 >       , lastName = "Vipperman"
->       , address = [ "10000 Smiley Lane", "Denver, CO 80266" ]
+>       , address = Seq.fromList
+>            [ "10000 Smiley Lane", "Denver, CO 80266" ]
 >       , phone = "303-555-1212"
 >       , email = "vipperman@rhyta.com"
 >       , balance = "301.00"
@@ -130,27 +133,31 @@ returns a list of `Cell`.  First let's make a small function that
 will make a function that returns a `Cell` with our desired
 defaults:
 
-> cell :: [Chunk] -> Radiant -> Cell
-> cell cks bck = Cell brs left top bck
+> cell :: Seq Chunk -> Radiant -> Cell
+> cell cks bck = Cell brs top left bck
 >   where
->     brs = map Bar . map ((:[]) . (<> back bck)) $ cks
+>     brs = fmap Bar . fmap (Seq.singleton . (<> back bck)) $ cks
 
 
-> recordToCells :: Record -> Radiant -> [Cell]
-> recordToCells r rad = map ($ rad) $
->   [ cell . (:[]) . fromString . firstName $ r
->   , cell . (:[]) $ (fromString (lastName r) <> bold)
->   , cell . map fromString . address $ r
->   , cell . (:[]) . fromString . phone $ r
->   , cell . (:[]) . fromString . email $ r
->   , cell . (:[]) . fromString . balance $ r
+> recordToCells :: Record -> Radiant -> Seq Cell
+> recordToCells r rad = fmap ($ rad) . Seq.fromList $
+>   [ cell . Seq.singleton . fromString . firstName $ r
+>   , cell . Seq.singleton $ (fromString (lastName r) <> bold)
+>   , cell . fmap fromString . address $ r
+>   , cell . Seq.singleton . fromString . phone $ r
+>   , cell . Seq.singleton . fromString . email $ r
+>   , cell . Seq.singleton . fromString . balance $ r
 >   ]
 
 Zipping to get rows of cells
 ============================
 
-> cellRows :: [[Cell]]
-> cellRows = zipWith recordToCells records (cycle [noColorRadiant, yellow])
+> cellRows :: Seq (Seq Cell)
+> cellRows = Seq.mapWithIndex makeColumn records
+>   where
+>     makeColumn index record = recordToCells record color
+>       where
+>         color = if even index then noColorRadiant else yellow
 
 Adding white space between columns
 ==================================
@@ -161,8 +168,8 @@ easy to add.  The string literal, " ", becomes a Cell due to the use
 of the Overloaded Strings extension; the cell will have the default
 background color.
 
-> spacedOutCells :: [[Cell]]
-> spacedOutCells = map (intersperse " ") cellRows
+> spacedOutCells :: Seq (Seq Cell)
+> spacedOutCells = fmap (intersperse " ") cellRows
 
 Printing the cells
 ==================
