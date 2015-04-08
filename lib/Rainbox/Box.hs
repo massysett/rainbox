@@ -53,7 +53,6 @@ module Rainbox.Box
   , B.barToBox
   , B.barsToBox
   , B.Box
-  , B.unBox
 
   -- * Making Boxes
   , B.blank
@@ -90,13 +89,10 @@ module Rainbox.Box
   , intersperse
 
   -- * Printing Boxes
-  , render
+  , B.render
   , printBox
   ) where
 
-import Control.Monad (join)
-import Data.Monoid
-import qualified Data.Text as X
 import Rainbow
 import qualified Rainbox.Box.Primitives as B
 import Rainbox.Box.Primitives
@@ -106,7 +102,6 @@ import Rainbox.Box.Primitives
   , Vert
   , Height(..)
   , Width(..)
-  , unBox
   )
 import qualified Data.ByteString as BS
 import Data.Sequence (Seq, ViewL(..), viewl, (<|))
@@ -213,6 +208,21 @@ column
 column bk ah bs = map (growH bk w ah) bs
   where
     w = maximum . (0:) . map B.width $ bs
+
+-- | View a 'Box', possibly shrinking it.  You set the size of your
+-- viewport and how it is oriented relative to the 'Box' as a whole.
+-- The 'Box' returned may be smaller than the argument 'Box', but it
+-- will never be bigger.
+--
+-- Examples:
+--
+-- >>> :set -XOverloadedStrings
+-- >>> let box = catV defaultBackground top [ "ab", "cd" ]
+-- >>> printBox . view (Height 1) (Width 1) left top $ box
+-- a
+--
+-- >>> printBox . view (Height 1) (Width 1) right bottom $ box
+-- d
 
 view
   :: Height
@@ -331,7 +341,8 @@ punctuateV
   -> Box
 punctuateV bk a sep = B.catV bk a . intersperse sep
 
--- | Like 'Data.List.intersperse' but works on a 'Seq'.
+-- | Like 'Data.List.intersperse' from "Data.List" but works on a
+-- 'Seq'.
 intersperse
   :: a
   -> Seq a
@@ -344,27 +355,10 @@ intersperse a sq = case viewl sq of
       EmptyL -> Seq.empty
       b :< rs -> a <| b <| go rs
 
--- | Convert a 'Box' to Rainbow 'Chunk's.  You can then print it, as
--- described in "Rainbow".
-render :: Box -> Seq Chunk
-render bx = case unBox bx of
-  B.NoHeight _ -> Seq.empty
-  B.WithHeight rw ->
-    join . join . fmap ( <| Seq.singleton (Seq.singleton "\n"))
-    . fmap renderRod $ rw
-
-renderRod :: B.Rod -> Seq Chunk
-renderRod (B.Rod rd) = fmap toChunk rd
-  where
-    toChunk = either spcToChunk id . B.unNibble
-    spcToChunk ss =
-      chunkFromText (X.replicate (B.numSpaces ss) (X.singleton ' '))
-      <> back (B.spcBackground ss)
-
 -- | Prints a Box to standard output.  The highest number of available
 -- colors are used, using 'byteStringMakerFromEnvironment' from
 -- "Rainbow".
 printBox :: Box -> IO ()
 printBox b = do
   mkr <- byteStringMakerFromEnvironment
-  mapM_ BS.putStr . chunksToByteStrings mkr . F.toList . render $ b
+  mapM_ BS.putStr . chunksToByteStrings mkr . F.toList . B.render $ b

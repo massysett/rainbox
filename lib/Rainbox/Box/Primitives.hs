@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 -- | Box primitives.
 --
@@ -47,9 +48,7 @@ module Rainbox.Box.Primitives
   , Spaces
   , numSpaces
   , spcBackground
-  , BoxP(..)
   , Box
-  , unBox
 
   -- * Height and Width
   , Height(..)
@@ -65,6 +64,9 @@ module Rainbox.Box.Primitives
   , viewH
   , viewV
 
+  -- * Rendering Boxes
+  , render
+
   -- * Helpers
   , split
 
@@ -79,6 +81,17 @@ import qualified Data.Text as X
 import Data.String
 import Data.Sequence (Seq, (<|), ViewL(..), viewl)
 import qualified Data.Sequence as Seq
+
+-- # Classes
+
+-- | How many columns are in this thing? A column is one character
+-- wide.
+class HasWidth a where
+  width :: a -> Int
+
+-- | How tall is this thing?  A single screen row has height of 1.
+class HasHeight a where
+  height :: a -> Int
 
 -- # Box
 
@@ -115,9 +128,16 @@ instance HasWidth Nibble where
 newtype Bar = Bar (Seq Chunk)
   deriving (Eq, Show)
 
+-- | Creates a 'Box' from a single 'Bar'.  The 'Box' always has height
+-- 1 and is wide as the number of characters in the 'Bar'.
 barToBox :: Bar -> Box
 barToBox (Bar cs) = chunks cs
 
+-- | Creates a 'Box' from several 'Bar'.  The 'Box' has a height equal
+-- to the number of 'Bar' in the 'Seq'.  The width of the 'Box' is as
+-- wide as the number of characters in the widest 'Bar'.  The
+-- 'Radiant' supplies the background color that will be used when
+-- padding 'Bar' that are not as wide as the widest 'Bar'.
 barsToBox
   :: Radiant
   -- ^ Background colors
@@ -142,8 +162,11 @@ instance Monoid Bar where
 -- 'Box' with zero height has no characters but still has a certain
 -- width.
 
-newtype Box = Box { unBox :: BoxP }
+newtype Box = Box BoxP
   deriving (Eq, Show)
+
+instance HasHeight Box where
+  height (Box b) = height b
 
 newtype Rod = Rod (Seq Nibble)
   deriving (Eq, Show, Monoid)
@@ -164,6 +187,11 @@ data BoxP
   -- one component Bar.
   deriving (Eq, Show)
 
+instance HasHeight BoxP where
+  height bp = case bp of
+    NoHeight _ -> 0
+    WithHeight sq -> Seq.length sq
+
 instance HasWidth BoxP where
   width b = case b of
     NoHeight w -> w
@@ -178,25 +206,9 @@ instance IsString Box where
 newtype Height = Height Int
   deriving (Eq, Ord, Show)
 
--- | How many 'Rod' are in this 'Box'?
-height :: Box -> Int
-height b = case unBox b of
-  NoHeight _ -> 0
-  WithHeight rs -> Seq.length rs
-
 -- | A count of columns
 newtype Width = Width Int
   deriving (Eq, Ord, Show)
-
--- | How many columns are in this thing? A column is one character
--- wide.  Every 'Bar' in a 'Box' always has the same number of
--- columns.
---
--- This is for things that have a single, solitary width, not things
--- like columns that might have different widths at different
--- points.
-class HasWidth a where
-  width :: a -> Int
 
 instance HasWidth Bar where
   width (Bar b) = F.sum . fmap (F.sum . fmap X.length . chunkTexts) $ b
@@ -244,23 +256,33 @@ data Vert = ATop | ABottom
 data Horiz = ALeft | ARight
   deriving (Eq, Show)
 
+-- | Align in the center.  Works either for horizontal or vertical
+-- alignment, depending on the context.  Leaves both margins ragged.
 center :: Align a
 center = Center
 
+-- | Align items so they are flush with the top; leaves the bottom
+-- ragged.
 top :: Align Vert
 top = NonCenter ATop
 
+-- | Align items so they are flush with the bottom; leaves the top
+-- ragged.
 bottom :: Align Vert
 bottom = NonCenter ABottom
 
+-- | Align items so they are flush with the left; leaves the right
+-- ragged.
 left :: Align Horiz
 left = NonCenter ALeft
 
+-- | Align items so they are flush with the right; leaves the left
+-- ragged.
 right :: Align Horiz
 right = NonCenter ARight
 
 -- | Merge several Box horizontally into one Box.  That is, with
--- alignment set to ATop:
+-- alignment set to 'top':
 --
 -- > --- ------- ----
 -- > --- -------
@@ -272,7 +294,7 @@ right = NonCenter ARight
 -- > ----------....
 -- > ---...........
 --
--- With alignment set to ABottom, becomes
+-- With alignment set to 'bottom', becomes
 --
 -- > ---...........
 -- > ----------....
@@ -444,21 +466,11 @@ mergeHoriz sq = case viewl sq of
 
 -- # Viewing
 
--- | View a 'Box', possibly shrinking it.  You set the size of your
--- viewport and how it is oriented relative to the 'Box' as a whole.
--- The 'Box' returned may be smaller than the argument 'Box', but it
--- will never be bigger.
---
--- Examples:
---
--- >>> :set -XOverloadedStrings
--- >>> let box = catV defaultBackground top [ "ab", "cd" ]
--- >>> printBox . view (Height 1) (Width 1) left top $ box
--- a
---
--- >>> printBox . view (Height 1) (Width 1) right bottom $ box
--- d
-
+-- | View a 'Box' vertically, possibly shrinking it.  The returned
+-- 'Box' is the same width as the argument 'Box'.  If the alignment is
+-- 'top', excess lines from the bottom are removed; if the alignment
+-- is 'bottom', excess lines from the top are removed; if 'center', a
+-- roughly equal number of lines are removed from top and bottom.
 viewV :: Int -> Align Vert -> Box -> Box
 viewV hght a (Box b) = Box $ case b of
   WithHeight rs
@@ -479,6 +491,12 @@ viewV hght a (Box b) = Box $ case b of
   where
     h = max 0 hght
 
+-- | View a 'Box' horizontally, possibly shrinking it.  The returned
+-- 'Box' is the same height as the argument 'Box'.  If the alignment
+-- is 'left', excess columns from the right are removed; if the
+-- alignment is 'right', excess columns from the left are removed; if
+-- 'center', a roughly equal number of columns are removed from the
+-- left and right.
 viewH :: Int -> Align Horiz -> Box -> Box
 viewH wdth a (Box b) = Box $ case b of
   NoHeight nh -> NoHeight (min w nh)
@@ -573,6 +591,27 @@ blanks
   -- ^ Number of blanks
   -> Nibble
 blanks bk c = Nibble (Left (Spaces c bk))
+
+-- # Rendering
+
+-- | Convert a 'Box' to Rainbow 'Chunk's.  You can then print it, as
+-- described in "Rainbow".
+render :: Box -> Seq Chunk
+render (Box bx) = case bx of
+  NoHeight _ -> Seq.empty
+  WithHeight rw ->
+    join . join . fmap ( <| Seq.singleton (Seq.singleton "\n"))
+    . fmap renderRod $ rw
+
+renderRod :: Rod -> Seq Chunk
+renderRod (Rod rd) = fmap toChunk rd
+  where
+    toChunk = either spcToChunk id . unNibble
+    spcToChunk ss =
+      chunkFromText (X.replicate (numSpaces ss) (X.singleton ' '))
+      <> back (spcBackground ss)
+
+-- # Helpers
 
 -- | Split a number into two parts, so that the sum of the two parts
 -- is equal to the original number.
