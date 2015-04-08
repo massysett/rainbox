@@ -34,7 +34,7 @@ module Rainbox.Box
   (
   -- * Height and columns
     Height(..)
-  , B.height
+  , B.HasHeight(..)
   , Width(..)
   , B.HasWidth(..)
 
@@ -78,7 +78,6 @@ module Rainbox.Box
   , grow
   , growH
   , growV
-  , column
 
   -- * Resizing
   , resize
@@ -196,18 +195,6 @@ growV bk tgtH a b
       | a == B.center = B.split diff
       | a == B.top = (0, diff)
       | otherwise = (diff, 0)
-
--- | Returns a list of 'Box', each being exactly as wide as the
--- widest 'Box' in the input list.
-column
-  :: Radiant
-  -- ^ Background colors
-  -> Align Horiz
-  -> [Box]
-  -> [Box]
-column bk ah bs = map (growH bk w ah) bs
-  where
-    w = maximum . (0:) . map B.width $ bs
 
 -- | View a 'Box', possibly shrinking it.  You set the size of your
 -- viewport and how it is oriented relative to the 'Box' as a whole.

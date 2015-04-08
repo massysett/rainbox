@@ -40,19 +40,13 @@ module Rainbox.Box.Primitives
 
   -- * Box
   , Bar(..)
-  , Rod(..)
   , barToBox
   , barsToBox
-  , Nibble
-  , unNibble
-  , Spaces
-  , numSpaces
-  , spcBackground
   , Box
 
   -- * Height and Width
   , Height(..)
-  , height
+  , HasHeight(..)
   , Width(..)
   , HasWidth(..)
 
