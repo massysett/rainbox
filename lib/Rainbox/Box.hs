@@ -91,6 +91,7 @@ module Rainbox.Box
   , printBox
   ) where
 
+import Control.Monad (join)
 import Data.Monoid
 import Data.List (intersperse)
 import qualified Data.Text as X
@@ -106,6 +107,9 @@ import Rainbox.Box.Primitives
   , unBox
   )
 import qualified Data.ByteString as BS
+import Data.Sequence (Seq, ViewL(..), viewl, (<|))
+import qualified Data.Sequence as Seq
+import qualified Data.Foldable as F
 
 --
 -- # Box making
@@ -131,7 +135,7 @@ blankV bk i = B.blank bk (Height i) (Width 0)
 
 -- | A Box made of a single 'Chunk'.
 chunk :: Chunk -> Box
-chunk = B.chunks . (:[])
+chunk = B.chunks . Seq.singleton
 
 -- | Grow a box.  Each dimension of the result 'Box' is never smaller
 -- than the corresponding dimension of the input 'Box'.  Analogous to
@@ -165,7 +169,7 @@ growH
   -> Box
 growH bk tgtW a b
   | tgtW < w = b
-  | otherwise = B.catH bk B.top [lft, b, rt]
+  | otherwise = B.catH bk B.top . Seq.fromList $ [lft, b, rt]
   where
     w = B.width b
     diff = tgtW - w
@@ -186,7 +190,7 @@ growV
   -> Box
 growV bk tgtH a b
   | tgtH < h = b
-  | otherwise = B.catV bk B.left [tp, b, bt]
+  | otherwise = B.catV bk B.left . Seq.fromList $ [tp, b, bt]
   where
     h = B.height b
     diff = tgtH - h
@@ -215,9 +219,9 @@ view
   -> Align Horiz
   -> Box
   -> Box
-view h w av ah
-  = B.viewH (B.unWidth w) ah
-  . B.viewV (B.unHeight h) av
+view (B.Height h) (B.Width w) av ah
+  = B.viewH w ah
+  . B.viewV h av
 
 --
 -- # Resizing
@@ -236,9 +240,9 @@ resize
   -> Align Horiz
   -> Box
   -> Box
-resize bk h w av ah
-  = resizeH bk (unWidth w) ah
-  . resizeV bk (unHeight h) av
+resize bk (B.Height h) (B.Width w) av ah
+  = resizeH bk w ah
+  . resizeV bk h av
 
 -- | Resize horizontally.
 resizeH
@@ -284,7 +288,7 @@ sepH
   -> Int
   -- ^ Number of separating spaces
   -> Align Vert
-  -> [Box]
+  -> Seq Box
   -> Box
 sepH bk sep a = punctuateH bk a bl
   where
@@ -298,7 +302,7 @@ sepV
   -> Int
   -- ^ Number of separating spaces
   -> Align Horiz
-  -> [Box]
+  -> Seq Box
   -> Box
 sepV bk sep a = punctuateV bk a bl
   where
@@ -311,9 +315,9 @@ punctuateH
   -- ^ Background colors
   -> Align Vert
   -> Box
-  -> [Box]
+  -> Seq Box
   -> Box
-punctuateH bk a sep = B.catH bk a . intersperse sep
+punctuateH bk a sep = B.catH bk a . intersperseSeq sep
 
 -- | A vertical version of 'punctuateH'.
 punctuateV
@@ -321,21 +325,33 @@ punctuateV
   -- ^ Background colors
   -> Align Horiz
   -> Box
-  -> [Box]
+  -> Seq Box
   -> Box
-punctuateV bk a sep = B.catV bk a . intersperse sep
+punctuateV bk a sep = B.catV bk a . intersperseSeq sep
+
+intersperseSeq
+  :: a
+  -> Seq a
+  -> Seq a
+intersperseSeq a sq = case viewl sq of
+  EmptyL -> Seq.empty
+  x :< xs -> x <| go xs
+  where
+    go bs = case viewl bs of
+      EmptyL -> Seq.empty
+      b :< rs -> a <| b <| go rs
 
 -- | Convert a 'Box' to Rainbow 'Chunk's.  You can then print it, as
 -- described in "Rainbow".
-render :: Box -> [Chunk]
+render :: Box -> Seq Chunk
 render bx = case unBox bx of
-  B.NoHeight _ -> []
+  B.NoHeight _ -> Seq.empty
   B.WithHeight rw ->
-    concat . concat . map (: [["\n"]])
-    . map renderRod $ rw
+    join . join . fmap ( <| Seq.singleton (Seq.singleton "\n"))
+    . fmap renderRod $ rw
 
-renderRod :: B.Rod -> [Chunk]
-renderRod = map toChunk . B.unRod
+renderRod :: B.Rod -> Seq Chunk
+renderRod (B.Rod rd) = fmap toChunk rd
   where
     toChunk = either spcToChunk id . B.unNibble
     spcToChunk ss =
@@ -348,4 +364,4 @@ renderRod = map toChunk . B.unRod
 printBox :: Box -> IO ()
 printBox b = do
   mkr <- byteStringMakerFromEnvironment
-  mapM_ BS.putStr . chunksToByteStrings mkr . render $ b
+  mapM_ BS.putStr . chunksToByteStrings mkr . F.toList . render $ b

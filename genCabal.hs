@@ -6,7 +6,7 @@ import Cartel
 
 -- Package version
 pkgVersion :: [Word]
-pkgVersion = [0,10,0,2]
+pkgVersion = [0,12,0,0]
 
 -- Dependencies
 
@@ -16,17 +16,14 @@ base = closedOpen "base" [4,5,0,0] [4,8,0,0]
 bytestring :: Package
 bytestring = closedOpen "bytestring" [0,10] [0,11]
 
+containers :: Package
+containers = closedOpen "containers" [0,5,5] [0,6]
+
 rainbow :: Package
 rainbow = nextBreaking "rainbow" [0,22]
 
-terminfo :: Package
-terminfo = closedOpen "terminfo" [0,3,2] [0,5,0,0]
-
 text :: Package
 text = closedOpen "text" [0,11,3,1] [1,3,0,0]
-
-transformers :: Package
-transformers = closedOpen "transformers" [0,3,0,0] [0,5,0,0]
 
 array :: Package
 array = closedOpen "array" [0,4,0,0] [0,6,0,0]
@@ -81,8 +78,8 @@ libPackages =
   [ base
   , rainbow
   , bytestring
+  , containers
   , text
-  , transformers
   , array
   ]
 

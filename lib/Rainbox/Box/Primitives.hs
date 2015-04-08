@@ -1,3 +1,4 @@
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 -- | Box primitives.
 --
 -- This module provides all functions that have access to the
@@ -69,12 +70,15 @@ module Rainbox.Box.Primitives
 
   ) where
 
+import Control.Monad (join)
 import qualified Data.Foldable as F
 import Rainbow
 import Rainbow.Types
 import Data.Monoid
 import qualified Data.Text as X
 import Data.String
+import Data.Sequence (Seq, (<|), ViewL(..), viewl)
+import qualified Data.Sequence as Seq
 
 -- # Box
 
@@ -108,26 +112,26 @@ instance HasWidth Nibble where
 -- take up only one screen column.  So, if you need accented
 -- characters, use a single Unicode code point, not two code points.
 -- For example, for é, use U+00E9, not U+0065 and U+0301.
-newtype Bar = Bar { unBar :: [Chunk] }
+newtype Bar = Bar (Seq Chunk)
   deriving (Eq, Show)
 
 barToBox :: Bar -> Box
-barToBox = chunks . unBar
+barToBox (Bar cs) = chunks cs
 
 barsToBox
   :: Radiant
   -- ^ Background colors
   -> Align Horiz
-  -> [Bar]
+  -> Seq Bar
   -> Box
-barsToBox bk ah = catV bk ah . map barToBox
+barsToBox bk ah = catV bk ah . fmap barToBox
 
 instance IsString Bar where
-  fromString = Bar . (:[]) . fromString
+  fromString = Bar . Seq.singleton . fromString
 
 instance Monoid Bar where
-  mempty = Bar []
-  mappend (Bar l) (Bar r) = Bar $ l ++ r
+  mempty = Bar Seq.empty
+  mappend (Bar l) (Bar r) = Bar $ l <> r
 
 -- | A 'Box' has a width in columns and a height in rows.  Its
 -- height and width both are always at least zero.  It can have
@@ -141,21 +145,21 @@ instance Monoid Bar where
 newtype Box = Box { unBox :: BoxP }
   deriving (Eq, Show)
 
-newtype Rod = Rod { unRod :: [Nibble] }
-  deriving (Eq, Show)
+newtype Rod = Rod (Seq Nibble)
+  deriving (Eq, Show, Monoid)
 
 instance IsString Rod where
-  fromString = Rod . (:[]) . fromString
+  fromString = Rod . Seq.singleton . fromString
 
 instance HasWidth Rod where
-  width = sum . map width . unRod
+  width (Rod ns) = F.sum . fmap width $ ns
 
 -- | Box payload.  Has the data of the box.
 data BoxP
   = NoHeight Int
   -- ^ A Box with width but no height.  The Int must be at least
   -- zero.  If it is zero, the Box has no height and no width.
-  | WithHeight [Rod]
+  | WithHeight (Seq Rod)
   -- ^ A Box that has height of at least one.  It must have at least
   -- one component Bar.
   deriving (Eq, Show)
@@ -163,25 +167,25 @@ data BoxP
 instance HasWidth BoxP where
   width b = case b of
     NoHeight w -> w
-    WithHeight ns -> sum . map width $ ns
+    WithHeight ns -> F.sum . fmap width $ ns
 
 instance IsString Box where
-  fromString = Box . WithHeight . (:[]) . fromString
+  fromString = Box . WithHeight . Seq.singleton . fromString
 
 -- # Height and Width
 
 -- | A count of rows
-newtype Height = Height { unHeight :: Int }
+newtype Height = Height Int
   deriving (Eq, Ord, Show)
 
 -- | How many 'Rod' are in this 'Box'?
 height :: Box -> Int
 height b = case unBox b of
   NoHeight _ -> 0
-  WithHeight rs -> length rs
+  WithHeight rs -> Seq.length rs
 
 -- | A count of columns
-newtype Width = Width { unWidth :: Int }
+newtype Width = Width Int
   deriving (Eq, Ord, Show)
 
 -- | How many columns are in this thing? A column is one character
@@ -195,14 +199,14 @@ class HasWidth a where
   width :: a -> Int
 
 instance HasWidth Bar where
-  width = sum . map (sum . map X.length . chunkTexts) . unBar
+  width (Bar b) = F.sum . fmap (F.sum . fmap X.length . chunkTexts) $ b
 
 instance HasWidth Box where
-  width b = case unBox b of
+  width (Box b) = case b of
     NoHeight i -> i
-    WithHeight rs -> case rs of
-      [] -> error "cols: error"
-      x:_ -> width x
+    WithHeight rs -> case viewl rs of
+      EmptyL -> error "cols: error"
+      x :< _ -> width x
 
 instance HasWidth Chunk where
   width = sum . map X.length . chunkTexts
@@ -216,17 +220,17 @@ blank
   -> Height
   -> Width
   -> Box
-blank bk r c
-  | unHeight r < 1 = Box $ NoHeight (max 0 (unWidth c))
-  | otherwise = Box . WithHeight $ replicate (unHeight r) row
+blank bk (Height r) (Width c)
+  | r < 1 = Box $ NoHeight (max 0 c)
+  | otherwise = Box . WithHeight $ Seq.replicate r row
   where
-    row | unWidth c < 1 = Rod []
-        | otherwise = Rod [ blanks bk (unWidth c) ]
+    row | c < 1 = Rod Seq.empty
+        | otherwise = Rod . Seq.singleton $ blanks bk c
 
 -- | A 'Box' made of 'Chunk'.  Always one Bar tall, and has as many
 -- columns as there are characters in the 'Chunk'.
-chunks :: [Chunk] -> Box
-chunks = Box . WithHeight . (:[]) . Rod . map (Nibble . Right)
+chunks :: Seq Chunk -> Box
+chunks = Box . WithHeight . Seq.singleton . Rod . fmap (Nibble . Right)
 
 -- | Alignment.
 data Align a = Center | NonCenter a
@@ -278,15 +282,15 @@ catH
   :: Radiant
   -- ^ Background colors
   -> Align Vert
-  -> [Box]
+  -> Seq Box
   -> Box
 catH bk al bs
-  | null bs = Box $ NoHeight 0
-  | hght == 0 = Box . NoHeight . sum . map width $ bs
-  | otherwise = Box . WithHeight . mergeHoriz . map (pad . unBox) $ bs
+  | Seq.null bs = Box $ NoHeight 0
+  | hght == 0 = Box . NoHeight . F.sum . fmap width $ bs
+  | otherwise = Box . WithHeight . mergeHoriz . fmap (pad . (\(Box b) -> b)) $ bs
   where
     pad = padHoriz bk al hght
-    hght = F.maximum . (0:) . map height $ bs
+    hght = F.maximum . (0 <|) . fmap height $ bs
 
 -- | Merge several Box vertically into one Box.  That is, with
 -- alignment set to 'left':
@@ -323,24 +327,24 @@ catV
   :: Radiant
   -- ^ Background colors
   -> Align Horiz
-  -> [Box]
+  -> Seq Box
   -> Box
 catV bk al bs
-  | null bs = Box $ NoHeight 0
-  | otherwise = Box . foldr f (NoHeight w)
-      . concat . map (flatten . unBox) $ bs
+  | Seq.null bs = Box $ NoHeight 0
+  | otherwise = Box . F.foldr f (NoHeight w)
+      . join . fmap (flatten . (\(Box b) -> b)) $ bs
   where
-    w = F.maximum . (0:) . map width $ bs
+    w = F.maximum . (0 <|) . fmap width $ bs
     f mayR bp = case mayR of
       Nothing -> bp
       Just rw -> case bp of
-        WithHeight wh -> WithHeight $ padded : wh
-        _ -> WithHeight [padded]
+        WithHeight wh -> WithHeight $ padded <| wh
+        _ -> WithHeight . Seq.singleton $ padded
         where
           padded = padVert bk al w rw
     flatten bp = case bp of
-      NoHeight _ -> [Nothing]
-      WithHeight rs -> map Just rs
+      NoHeight _ -> Seq.singleton Nothing
+      WithHeight rs -> fmap Just rs
 
 
 -- | Given the resulting height, pad a list of Height.  So, when given
@@ -363,22 +367,22 @@ padHoriz
   -> Align Vert
   -> Int
   -> BoxP
-  -> [Rod]
+  -> Seq Rod
 padHoriz bk a hght bp = case bp of
-  NoHeight w -> map (Rod . (:[])) . replicate h $ blanks bk w
-  WithHeight rs -> concat [tp, rs, bot]
+  NoHeight w -> fmap (Rod . Seq.singleton) . Seq.replicate h $ blanks bk w
+  WithHeight rs -> join . Seq.fromList $ [tp, rs, bot]
     where
-      nPad = max 0 $ h - length rs
+      nPad = max 0 $ h - Seq.length rs
       (nATop, nBot) = case a of
         Center -> split nPad
         NonCenter ATop -> (0, nPad)
         NonCenter ABottom -> (nPad, 0)
-      pad = Rod [blanks bk len]
+      pad = Rod . Seq.singleton $ blanks bk len
         where
-          len = case rs of
-            [] -> 0
-            x:_ -> width x
-      (tp, bot) = (replicate nATop pad, replicate nBot pad)
+          len = case viewl rs of
+            EmptyL -> 0
+            x :< _ -> width x
+      (tp, bot) = (Seq.replicate nATop pad, Seq.replicate nBot pad)
   where
     h = max 0 hght
 
@@ -398,7 +402,7 @@ padVert
   -> Int
   -> Rod
   -> Rod
-padVert bk a wdth rw@(Rod cs) = Rod . concat $ [lft, cs, rght]
+padVert bk a wdth rw@(Rod cs) = Rod . join . Seq.fromList $ [lft, cs, rght]
   where
     nPad = max 0 $ w - width rw
     (nLeft, nRight) = case a of
@@ -407,8 +411,8 @@ padVert bk a wdth rw@(Rod cs) = Rod . concat $ [lft, cs, rght]
       NonCenter ARight -> (nPad, 0)
     (lft, rght) = (mkPad nLeft, mkPad nRight)
     mkPad n
-      | n == 0 = []
-      | otherwise = [blanks bk n]
+      | n == 0 = Seq.empty
+      | otherwise = Seq.singleton $ blanks bk n
     w = max 0 wdth
 
 
@@ -428,10 +432,15 @@ padVert bk a wdth rw@(Rod cs) = Rod . concat $ [lft, cs, rght]
 -- Strange behavior will result if each input list is not exactly
 -- the same length.
 
-mergeHoriz :: [[Rod]] -> [Rod]
-mergeHoriz = foldr (zipWith merge) (repeat (Rod []))
+mergeHoriz :: Seq (Seq Rod) -> Seq Rod
+mergeHoriz sq = case viewl sq of
+  EmptyL -> Seq.empty
+  lead :< rest -> go lead rest
   where
-    merge (Rod r1) (Rod r2) = Rod $ r1 ++ r2
+    go x xs = case viewl xs of
+      EmptyL -> x
+      y :< ys -> go (Seq.zipWith (<>) x y) ys
+
 
 -- # Viewing
 
@@ -453,17 +462,19 @@ mergeHoriz = foldr (zipWith merge) (repeat (Rod []))
 viewV :: Int -> Align Vert -> Box -> Box
 viewV hght a (Box b) = Box $ case b of
   WithHeight rs
-    | h == 0 -> NoHeight . width . head $ rs
+    | h == 0 -> case viewl rs of
+        EmptyL -> error "viewV: error"
+        x :< _ -> NoHeight . width $ x
     | otherwise -> WithHeight $ case a of
-        NonCenter ATop -> take h rs
-        NonCenter ABottom -> drop extra rs
-        Center -> drop nDrop . take nTake $ rs
+        NonCenter ATop -> Seq.take h rs
+        NonCenter ABottom -> Seq.drop extra rs
+        Center -> Seq.drop nDrop . Seq.take nTake $ rs
           where
             (trimL, trimR) = split extra
-            nTake = length rs - trimR
+            nTake = Seq.length rs - trimR
             nDrop = trimL
         where
-          extra = max 0 $ length rs - h
+          extra = max 0 $ Seq.length rs - h
   x -> x
   where
     h = max 0 hght
@@ -471,7 +482,7 @@ viewV hght a (Box b) = Box $ case b of
 viewH :: Int -> Align Horiz -> Box -> Box
 viewH wdth a (Box b) = Box $ case b of
   NoHeight nh -> NoHeight (min w nh)
-  WithHeight rs -> WithHeight $ map f rs
+  WithHeight rs -> WithHeight $ fmap f rs
     where
       f rw = case a of
         NonCenter ALeft -> takeChars w rw
@@ -488,15 +499,15 @@ viewH wdth a (Box b) = Box $ case b of
 
 
 dropChars :: Int -> Rod -> Rod
-dropChars colsIn = Rod . go colsIn . unRod
+dropChars colsIn (Rod rd) = Rod . go colsIn $ rd
   where
     go n cs
       | n <= 0 = cs
-      | otherwise = case cs of
-         [] -> []
-         x:xs
+      | otherwise = case viewl cs of
+         EmptyL -> Seq.empty
+         x :< xs
            | lenX <= n -> go (n - lenX) xs
-           | otherwise -> x' : xs
+           | otherwise -> x' <| xs
            where
              lenX = case unNibble x of
               Left blnk -> numSpaces blnk
@@ -520,15 +531,15 @@ dropChunkChars n c = c { chunkTexts = go n (chunkTexts c) }
           len = X.length t
 
 takeChars :: Int -> Rod -> Rod
-takeChars colsIn = Rod . go colsIn . unRod
+takeChars colsIn (Rod rd) = Rod . go colsIn $ rd
   where
     go n cs
-      | n <= 0 = []
-      | otherwise = case cs of
-          [] -> []
-          x:xs
-            | lenX <= n -> x : go (n - lenX) xs
-            | otherwise -> [x']
+      | n <= 0 = Seq.empty
+      | otherwise = case viewl cs of
+          EmptyL -> Seq.empty
+          x :< xs
+            | lenX <= n -> x <| go (n - lenX) xs
+            | otherwise -> Seq.singleton x'
             where
               (lenX, x') = case unNibble x of
                 Left blnk ->
