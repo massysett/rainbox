@@ -54,7 +54,7 @@ import Rainbow.Colors
 import Rainbox.Box
 import Data.Monoid
 import Data.String
-import Data.Sequence (Seq, viewl, ViewL(..))
+import Data.Sequence (Seq)
 import qualified Data.Sequence as Seq
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as M
@@ -84,7 +84,7 @@ data Cell = Cell
 instance HasWidth Cell where
   width cl
     | Seq.null (bars cl) = 0
-    | otherwise = F.maximum . fmap width . bars $ cl
+    | otherwise = F.foldl' max 0 . fmap width . bars $ cl
 
 -- | Creates a Cell with a 'left' horizontal alignment, a 'top'
 -- vertical alignment, and a background of 'noColorRadianat'.  The
@@ -92,10 +92,6 @@ instance HasWidth Cell where
 -- string.
 instance IsString Cell where
   fromString s = Cell (Seq.singleton (fromString s)) top left noColorRadiant
-
--- | Returns the width of each 'Bar' in the 'Cell'.
-cellWidths :: Cell -> Seq Int
-cellWidths = fmap width . bars
 
 -- | Creates a single 'Box' from a list of rows of 'Cell'.  Each list
 -- is a row of 'Cell'.  The list of rows is from top to bottom; within
@@ -107,11 +103,11 @@ cellWidths = fmap width . bars
 
 -- TODO equalize
 gridByRows :: Seq (Seq Cell) -> Box
-gridByRows sqnce = glue . fmap mkRow $ sqnce
+gridByRows sqnce = glue . fmap mkRow . equalize padCell $ sqnce
   where
     glue = catV noColorRadiant left . fmap (catH noColorRadiant top)
 
-    mkRow = applyToLargestValues getHeight widthMap cellToBox
+    mkRow = applyToLargestValues (Height 0) getHeight widthMap cellToBox
       where
         getHeight = Height . Seq.length . bars
 
@@ -127,29 +123,25 @@ gridByRows sqnce = glue . fmap mkRow $ sqnce
 -- column will be padded on the bottom with blank cells.
 
 gridByCols :: Seq (Seq Cell) -> Box
-gridByCols = undefined
---gridByCols = glueBoxes . boxCells . arrayByCols padCell
-
--- | Examines a sequence to determine the length of the first
--- sequence.  Fails if the seuence is empty.
-lengthOfFirst :: Seq (Seq a) -> Maybe Int
-lengthOfFirst sq = case viewl sq of
-  EmptyL -> Nothing
-  x :< _ -> Just $ Seq.length x
-
-emptyBox :: Box
-emptyBox = blank noColorRadiant (Height 0) (Width 0)
-
--- | Make every 'Seq' as long as the given length, using the given
--- element as padding.
-equalizeLengths :: Int -> a -> Seq (Seq a) -> Seq (Seq a)
-equalizeLengths tgt pad = fmap padder
+gridByCols sqnce = glue . fmap mkCol . equalize padCell $ sqnce
   where
-    padder sq
-      | len > tgt = Seq.take tgt sq
-      | otherwise = sq <> Seq.replicate (tgt - len) pad
+    glue = catH noColorRadiant top . fmap (catV noColorRadiant left)
+
+    mkCol = applyToLargestValues (Width 0) getWidth heightMap mkCell
       where
-        len = Seq.length sq
+        getWidth = Width . width
+        mkCell w h c = cellToBox h w c
+
+    heightMap = largestByIndex (Height . Seq.length . bars) sqnce
+
+-- | Make every 'Seq' as long as the longest 'Seq', using the given
+-- element to pad.
+equalize :: a -> Seq (Seq a) -> Seq (Seq a)
+equalize pad sqnce = fmap lengthen sqnce
+  where
+    lengthen sq = sq <>
+      Seq.replicate (max 0 (maxLen - Seq.length sq)) pad
+    maxLen = F.foldl' max 0 . fmap Seq.length $ sqnce
 
 -- | Given a map of largest values for each index, a Seq of values,
 -- and a function to calculate the largest value for that Seq, and a
@@ -158,7 +150,9 @@ equalizeLengths tgt pad = fmap padder
 
 applyToLargestValues
   :: (Ord b, Ord c)
-  => (a -> b)
+  => b
+  -- ^ Identity for the value for the item in the Seq
+  -> (a -> b)
   -- ^ Find the value for item in this Seq
   -> Map Int c
   -- ^ Largest values by index
@@ -166,9 +160,9 @@ applyToLargestValues
   -- ^ Processor
   -> Seq a
   -> Seq d
-applyToLargestValues getVal mpLargest f sq = Seq.mapWithIndex k sq
+applyToLargestValues iden getVal mpLargest f sq = Seq.mapWithIndex k sq
   where
-    thisLargest = F.maximum . fmap getVal $ sq
+    thisLargest = F.foldl' max iden . fmap getVal $ sq
     k idx = f thisLargest (mpLargest M.! idx)
 
 
@@ -200,18 +194,6 @@ largestByIndex get = F.foldl' procOuterSeq M.empty
           where
             val = get item
             update = M.insert idx val mp
-
-{-
-makeColsFromRows
-  :: Int
-  -- ^ Number of columns
-  -> Seq (Seq a)
-  -> Seq (Seq a)
-makeColsFromRows nCols sq = fmap mkCol . Seq.fromList $ [0 .. nCols - 1]
-  where
-    mkCol idx = fmap (\rw -> rw `Seq.index` idx) sq
--}
-
 
 padCell :: Cell
 padCell = Cell Seq.empty top left noColorRadiant

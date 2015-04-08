@@ -25,9 +25,6 @@ rainbow = nextBreaking "rainbow" [0,22]
 text :: Package
 text = closedOpen "text" [0,11,3,1] [1,3,0,0]
 
-array :: Package
-array = closedOpen "array" [0,4,0,0] [0,6,0,0]
-
 tasty :: Package
 tasty = closedOpen "tasty" [0,10,1] [0,11]
 
@@ -80,7 +77,6 @@ libPackages =
   , bytestring
   , containers
   , text
-  , array
   ]
 
 libDeps :: HasBuildInfo a => a
