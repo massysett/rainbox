@@ -1,9 +1,11 @@
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE FlexibleInstances #-}
 module Rainbox.Category where
 
-import Control.Applicative
 import Rainbow
 import Rainbow.Types (Chunk(..))
-import Data.Sequence (Seq, ViewL(..), viewl, (<|), (|>))
+import Data.Sequence (Seq) -- , ViewL(..)), viewl, (<|), (|>))
 import qualified Data.Foldable as F
 import qualified Data.Sequence as Seq
 import qualified Data.Text as X
@@ -26,104 +28,134 @@ data Horiz = ALeft | ARight
 newtype Height = Height Int
   deriving (Eq, Ord, Show)
 
+class HasHeight a where
+  height :: a -> Int
+
 -- | A count of columns
 newtype Width = Width Int
   deriving (Eq, Ord, Show)
 
-data Payload
-  = Filled Chunk
-  | Blank Height Width
-  | CatH Box Box (Align Vert)
-  | CatV Box Box (Align Horiz)
-  | ViewV Box (Align Vert)
-  | ViewH Box (Align Horiz)
+class HasWidth a where
+  width :: a -> Int
 
-data Box = Box (Maybe Radiant) Payload
+newtype Core = Core (Either Chunk (Height, Width))
 
-newtype Rod = Rod (Either (Radiant, Int) Chunk)
+instance HasWidth Core where
+  width (Core ei) = case ei of
+    Left (Chunk _ t) -> F.sum . fmap X.length $ t
+    Right (_, Width w) -> w
 
-calcBox :: Maybe Radiant -> Box -> Seq (Seq Rod)
-calcBox ctxtBack (Box thisBack pld) = case pld of
-  Filled ck -> Seq.singleton (Seq.singleton . Rod . Right $ ck)
-  Blank (Height h) (Width w) -> Seq.replicate (max 0 h)
-    (Seq.singleton . Rod . Left $ (bck, w))
+instance HasHeight Core where
+  height (Core ei) = case ei of
+    Left _ -> 1
+    Right (Height h, _) -> h
 
-  CatH l r a -> mergeHoriz l' r'
-    where
-      lBox = calcBox mayBack l
-      rBox = calcBox mayBack r
-      (l', r')
-        | diff == 0 = (lBox, rBox)
-        | diff > 0 = (lBox, padHoriz bck a diff rBox)
-        | otherwise = (padHoriz bck a (negate diff) lBox, rBox)
-      diff = Seq.length lBox - Seq.length rBox
+{-
 
-  CatV t b a -> t' <> b'
-    where
-      tBox = calcBox mayBack t
-      bBox = calcBox mayBack b
-      (t', b')
-        | diff == 0 = (tBox, bBox)
-        | diff > 0 = (tBox, padVert bck a diff bBox)
-        | otherwise = (padVert bck a (negate diff) tBox, bBox)
-      diff = Seq.length tBox - Seq.length bBox
+Need one class for Port and Starboard, one for Above and Below
 
-  where
-    mayBack = thisBack <|> ctxtBack
-    bck = maybe noColorRadiant id mayBack
+class Port a where
+  port :: a -> Int
 
-mergeHoriz :: Seq (Seq Rod) -> Seq (Seq Rod) -> Seq (Seq Rod)
-mergeHoriz x y = Seq.zipWith (<>) x y
+class Starboard a where
+  starboard :: a -> Int
 
-width :: Seq (Seq Rod) -> Int
-width sq = case viewl sq of
-  EmptyL -> 0
-  x :< _ -> F.sum . fmap toWidth $ x
-    where
-      toWidth (Rod ei) = case ei of
-        Left (_, i) -> i
-        Right (Chunk _ ts) -> F.sum . fmap X.length $ ts
+class Above a where
+  above :: a -> Int
 
-padHoriz
-  :: Radiant
-  -> Align Vert
-  -> Int
-  -> Seq (Seq Rod)
-  -> Seq (Seq Rod)
-padHoriz bk a hght sq = (padTop <| sq) |> padBot
-  where
-    (nTop, nBot) = case a of
-      Center -> split hght
-      NonCenter ATop -> (0, hght)
-      NonCenter ABottom -> (hght, 0)
-    padTop = Seq.replicate nTop . Rod . Left $ (bk, w)
-    padBot = Seq.replicate nBot . Rod . Left $ (bk, w)
-    w = width sq
+class Below a where
+  below :: a -> Int
+-}
 
-padVert
-  :: Radiant
-  -> Align Horiz
-  -> Int
-  -> Seq (Seq Rod)
-  -> Seq (Seq Rod)
-padVert bk a wdth sqnce = fmap padder sqnce
-  where
-    (nLeft, nRight)
-      | wdth < 1 = (0,0)
-      | otherwise = case a of
-          Center -> split wdth
-          NonCenter ALeft -> (0, wdth)
-          NonCenter ARight -> (wdth, 0)
-    padder = addPad (<|) nLeft . addPad (flip (|>)) nRight
-    addPad adder i
-      | i < 1 = id
-      | otherwise = adder (Rod . Left $ (bk, i))
-    
+data BoxVP = BoxVP (Align Horiz) Radiant (Either BoxH Core)
 
+instance HasWidth BoxVP where
+  width (BoxVP _ _ ei) = case ei of
+    Left bh -> width bh
+    Right c -> width c
 
--- | Split a number into two parts, so that the sum of the two parts
--- is equal to the original number.
-split :: Int -> (Int, Int)
-split i = (r, r + rm)
-  where
-    (r, rm) = i `quotRem` 2
+instance HasHeight BoxVP where
+  height (BoxVP _ _ ei) = case ei of
+    Left bh -> height bh
+    Right c -> height c
+
+data BoxHP = BoxHP (Align Vert) Radiant (Either BoxV Core)
+
+instance HasWidth BoxHP where
+  width (BoxHP _ _ ei) = case ei of
+    Left bv -> width bv
+    Right c -> height c
+
+instance HasHeight BoxHP where
+  height (BoxHP _ _ ei) = case ei of
+    Left bv -> height bv
+    Right c -> height c
+
+newtype BoxV = BoxV (Seq BoxVP)
+  deriving Monoid
+
+instance HasWidth BoxV where
+  width = undefined
+
+instance HasHeight BoxV where
+  height = undefined
+
+newtype BoxH = BoxH (Seq BoxHP)
+  deriving Monoid
+
+instance HasHeight BoxH where
+  height = undefined
+
+instance HasWidth BoxH where
+  width = undefined
+
+class Box a where
+  printBox :: a -> Seq (Seq Chunk)
+
+instance Box BoxV where
+  printBox = undefined
+
+instance Box BoxH where
+  printBox = undefined
+
+class Alignment a where
+  type BuiltBox a
+  type Opposite a
+  buildBox :: a -> Radiant -> Either (Opposite a) Core -> BuiltBox a
+
+instance Alignment (Align Vert) where
+  type BuiltBox (Align Vert) = BoxH
+  type Opposite (Align Vert) = BoxV
+  buildBox a r ei = BoxH . Seq.singleton $
+    BoxHP a r ei
+
+instance Alignment (Align Horiz) where
+  type BuiltBox (Align Horiz) = BoxV
+  type Opposite (Align Horiz) = BoxH
+  buildBox a r ei = BoxV . Seq.singleton $
+    BoxVP a r ei
+
+fromChunk
+  :: Alignment a
+  => a
+  -> Radiant
+  -> Chunk
+  -> BuiltBox a
+fromChunk a r c = buildBox a r (Right (Core (Left c)))
+
+blank
+  :: Alignment a
+  => a
+  -> Radiant
+  -> Height
+  -> Width
+  -> BuiltBox a
+blank a r h w = buildBox a r (Right (Core (Right (h, w))))
+
+convert
+  :: Alignment a
+  => a
+  -> Radiant
+  -> Opposite a
+  -> BuiltBox a
+convert a r o = buildBox a r (Left o)
