@@ -9,7 +9,7 @@ import Rainbow
 import Control.Monad (join)
 import Data.Monoid
 import Rainbow.Types (Chunk(..))
-import Data.Sequence (Seq, ViewL(..), viewl, (|>))
+import Data.Sequence (Seq, ViewL(..), viewl, (|>), (<|))
 import qualified Data.Foldable as F
 import qualified Data.Sequence as Seq
 import qualified Data.Text as X
@@ -306,6 +306,15 @@ tableByColumns
   -> BoxV
 tableByColumns = table
 
+-- | Like 'Data.List.intersperse' in "Data.List", but works on 'Seq'.
+intersperse :: a -> Seq a -> Seq a
+intersperse new sq = case viewl sq of
+  EmptyL -> Seq.empty
+  x :< xs -> x <| go xs
+    where
+      go sqnce = case viewl sqnce of
+        EmptyL -> Seq.empty
+        a :< as -> new <| a <| go as
 
 -- | Split a number into two parts, so that the sum of the two parts
 -- is equal to the original number.
