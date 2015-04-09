@@ -11,7 +11,7 @@ pkgVersion = [0,12,0,0]
 -- Dependencies
 
 base :: Package
-base = closedOpen "base" [4,5,0,0] [4,8,0,0]
+base = closedOpen "base" [4,5,0,0] [4,9,0,0]
 
 bytestring :: Package
 bytestring = closedOpen "bytestring" [0,10] [0,11]
