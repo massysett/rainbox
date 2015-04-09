@@ -3,7 +3,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE Trustworthy #-}
 {-# LANGUAGE OverloadedLists #-}
-module Rainbox.Category where
+module Rainbox.Core where
 
 import Rainbow
 import Control.Monad (join)
@@ -193,7 +193,7 @@ instance UpDown BoxHP where
 -- verically along this axis, rather like a flagpole.  'BoxV' can be
 -- combined using the 'Monoid' functions.  When you are done adding
 -- blocks to the 'BoxV' by combining separate 'BoxV', you can convert
--- it to a 'BoxH' using 'convert'.
+-- it to a 'BoxH' using 'convertBox'.
 newtype BoxV = BoxV (Seq BoxVP)
 
 instance Monoid BoxV where
@@ -215,7 +215,7 @@ instance HasHeight BoxV where
 -- horizontally along this axis, rather like railroad cars on a track.
 -- 'BoxH' can be combined using the 'Monoid' functions.  When you are
 -- done adding blocks to the 'BoxH' by combining separate 'BoxH', you
--- can convert it to a single 'BoxV' using 'convert'.
+-- can convert it to a single 'BoxV' using 'convertBox'.
 newtype BoxH = BoxH (Seq BoxHP)
 
 instance Monoid BoxH where
@@ -293,36 +293,36 @@ instance Alignment (Align Horiz) where
 
 -- | Construct a box from a single 'Chunk'.  Either a 'BoxH' or a
 -- 'BoxV' will be built depending on the return type of the function.
-fromChunk
+blockFromChunk
   :: Alignment a
   => a
   -> Radiant
   -> Chunk
   -> BuiltBox a
-fromChunk a r c = buildBox a r (Right (Core (Left c)))
+blockFromChunk a r c = buildBox a r (Right (Core (Left c)))
 
 -- | Construct a blank box.  Useful for adding in background spacers.
 -- For a function that builds one-dimensional boxes, see 'segment',
 -- which often is all you need if you are making a blank box to
 -- separate other boxes.
-blank
+blankBlock
   :: Alignment a
   => a
   -> Radiant
   -> Height
   -> Width
   -> BuiltBox a
-blank a r h w = buildBox a r (Right (Core (Right (h, w))))
+blankBlock a r h w = buildBox a r (Right (Core (Right (h, w))))
 
 -- | Converts a 'BoxH' to a 'BoxV', and a 'BoxV' to a 'BoxH'.  Useful
 -- when combining boxes into larger boxes.
-convert
+convertBox
   :: Alignment a
   => a
   -> Radiant
   -> Opposite a
   -> BuiltBox a
-convert a r o = buildBox a r (Left o)
+convertBox a r o = buildBox a r (Left o)
 
 -- | Convert a box to a 'Seq' of 'Chunk' in preparation for rendering.
 -- Use 'F.toList' to convert the 'Seq' of 'Chunk' to a list so that
