@@ -24,12 +24,12 @@ module Rainbox
   , render
 
   -- * Tables
-  , CellRow(..)
-  , Cell(..)
-  , RowCol(..)
+  , CellRow
+  , Cell
+  , RowCol
   , Row
   , Column
-  , RowsCols(..)
+  , RowsCols
   , Rows
   , Columns
   , table

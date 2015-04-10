@@ -1,7 +1,5 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE Trustworthy #-}
-{-# LANGUAGE OverloadedLists #-}
 module Rainbox.Core where
 
 import Rainbow
@@ -13,7 +11,6 @@ import Data.Sequence (Seq, ViewL(..), viewl, (|>), (<|))
 import qualified Data.Foldable as F
 import qualified Data.Sequence as Seq
 import qualified Data.Text as X
-import GHC.Exts (IsList(..))
 
 -- # Alignment
 
@@ -239,7 +236,7 @@ instance Monoid BoxH where
   mappend (BoxH x) (BoxH y) = BoxH $ x <> y
 
 instance Box BoxH where
-  makeBox bx@(BoxH sqnce) = mergeVert $ fmap equalize sqnce
+  makeBox bx@(BoxH sqnce) = mergeVert $ fmap eqlize sqnce
     where
       maxTop = above bx
       maxBot = below bx
@@ -249,7 +246,7 @@ instance Box BoxH where
         x :< xs -> F.foldl' comb x xs
         where
           comb acc sq = Seq.zipWith (<>) acc sq
-      equalize bhp@(PayloadH _ rd s3) = tp <> this <> bot
+      eqlize bhp@(PayloadH _ rd s3) = tp <> this <> bot
         where
           this = caseS3 makeBox makeBox
             (fmap Seq.singleton $ rodsFromCore rd) s3
@@ -268,10 +265,10 @@ instance HasWidth BoxH where
   width (BoxH sq) = F.sum . fmap width $ sq
 
 instance Box BoxV where
-  makeBox bx@(BoxV sqnce) = mergeHoriz $ fmap equalize sqnce
+  makeBox bx@(BoxV sqnce) = mergeHoriz $ fmap eqlize sqnce
     where
       mergeHoriz = F.foldl' (<>) Seq.empty
-      equalize (PayloadV a rd s3) = fmap addLeftRight this
+      eqlize (PayloadV a rd s3) = fmap addLeftRight this
         where
           this = caseS3 makeBox makeBox
             (fmap Seq.singleton $ rodsFromCore rd) s3
@@ -349,53 +346,29 @@ render = join . chunksFromRods . makeBox
 -- # Tables
 
 -- | A row of text in a single cell.
-newtype CellRow = CellRow (Seq Chunk)
-  deriving (Eq, Ord, Show)
-
-instance IsList CellRow where
-  type Item CellRow = Chunk
-  fromList = CellRow . Seq.fromList
-  toList (CellRow sq) = F.toList sq
+type CellRow = Seq Chunk
 
 -- | A single cell; resembles a spreasheet cell.  It can have multiple
 -- rows of text.
-newtype Cell = Cell (Seq CellRow)
-  deriving (Eq, Ord, Show)
-
-instance IsList Cell where
-  type Item Cell = CellRow
-  fromList = Cell . Seq.fromList
-  toList (Cell sq) = F.toList sq
+type Cell = Seq CellRow
 
 -- | Either a row or a column.  If it's a row, then each
 -- cell must appear in the row in left to right order; if it's a
 -- column, each cell must appear in the column in top to bottom order.
-newtype RowCol a = RowCol (Seq (a, Radiant, Cell))
-  deriving (Eq, Ord, Show)
-
-instance IsList (RowCol a) where
-  type Item (RowCol a) = (a, Radiant, Cell)
-  fromList = RowCol . Seq.fromList
-  toList (RowCol sq) = F.toList sq
+type RowCol a = Seq (Align a, Radiant, Cell)
 
 -- | A row; each value must appear in the row in
 -- left-to-right order.
-type Row = RowCol
+type Row = RowCol Horiz
 
 -- | A column; each value must appear in the column in
 -- top-to-bottom order.
-type Column = RowCol
+type Column a = RowCol Vert
 
 -- | Either a set of rows or a set of columns.  If it's a
 -- set of rows, each row must appear in top to bottom order; if it's a
 -- set of columns, each column must appear in left-to-right order.
-newtype RowsCols a = RowsCols (Seq (RowCol a))
-  deriving (Eq, Ord, Show)
-
-instance IsList (RowsCols a) where
-  type Item (RowsCols a) = RowCol a
-  fromList = RowsCols . Seq.fromList
-  toList (RowsCols sq) = F.toList sq
+type RowsCols a = Seq (RowCol a)
 
 -- | A set of rows; each row must appear in top-to-bottom
 -- order.
@@ -406,23 +379,50 @@ type Rows = RowsCols Horiz
 type Columns = RowsCols Vert
 
 -- | Create a table for a set of either rows or columns.
+{-
 table
   :: Alignment a
   => RowsCols a
-  -> BuiltBox a
-table = undefined
+  -> Opposite a
+-}
+table
+  :: Alignment a
+  => RowsCols a
+  -> Seq (BuiltBox a)
+table
+  = fmap mconcatSeq
+  . fmap (fmap cellToBox)
+  . equalize
+{-
+  = mconcatSeq
+  . fmap (convert center noColorRadiant)
+  . fmap mconcatSeq
+  . fmap (fmap cellToBox)
+  . equalize
+-}
 
+cellToBox :: (Align a, Radiant, Cell) -> BuiltBox a
+cellToBox = undefined
+
+equalize :: Seq (Seq a) -> Seq (Seq a)
+equalize = undefined
+
+mconcatSeq :: Alignment a => Seq (BuiltBox a) -> BuiltBox a
+mconcatSeq = F.foldl' (<>) mempty
+
+{-
 -- | Create a table from a set of rows.
 tableByRows
   :: Rows
-  -> BoxH
+  -> BoxV
 tableByRows = table
 
 -- | Create a table from a set of columns.
 tableByColumns
   :: Columns
-  -> BoxV
+  -> BoxH
 tableByColumns = table
+-}
 
 -- # Utilities
 
