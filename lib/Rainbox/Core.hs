@@ -111,12 +111,12 @@ newtype Core = Core (Either Chunk (Height, Width))
 instance HasWidth Core where
   width (Core ei) = case ei of
     Left (Chunk _ t) -> F.sum . fmap X.length $ t
-    Right (_, Width w) -> w
+    Right (_, Width w) -> max 0 w
 
 instance HasHeight Core where
   height (Core ei) = case ei of
     Left _ -> 1
-    Right (Height h, _) -> h
+    Right (Height h, _) -> max 0 h
 
 -- | Convert a 'Core' to a 'Seq' of 'Rod' for rendering.
 rodsFromCore :: Radiant -> Core -> Seq Rod
