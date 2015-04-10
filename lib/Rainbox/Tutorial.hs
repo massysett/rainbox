@@ -7,11 +7,16 @@ which contains all the innards of Rainbox, but ordinarily you won't
 need it.
 
 The basic building block of Rainbox is known as a @core@.  A core is
-either a single 'Chunk' or a blank box of arbitrary size.  A core
-made of a single 'Chunk' should not contain any newlines.  Leave
-newline handling up to Rainbox.  However, Rainbox will not check to
-ensure that your 'Chunk' does not contain any newline characters.  If
-it does contain newlines, your boxes will not look right.
+either a single 'Chunk' or a blank box of arbitrary size.  A core made
+of a single 'Chunk' should not contain any newlines.  Leave newline
+handling up to Rainbox.  However, Rainbox will not check to ensure
+that your 'Chunk' does not contain any newline characters.  If it does
+contain newlines, your boxes will not look right.  Also, Rainbox needs
+to know how wide your 'Chunk' are, in columns.  To measure width,
+Rainbox simply counts the number of characters in the 'Chunk'.
+Therefore, if you need accented characters, be sure to use a single
+character, not composed characters.  That is, to get á, use U+00E1,
+not U+00B4 and U+0061.
 
 Many things in Rainbox have height and width.  Both the height and
 width of an object can be zero, but never less than zero.  A @core@

@@ -8,6 +8,7 @@ module Rainbox.Core where
 import Rainbow
 import Control.Monad (join)
 import Data.Monoid
+import Data.Sums
 import Rainbow.Types (Chunk(..))
 import Data.Sequence (Seq, ViewL(..), viewl, (|>), (<|))
 import qualified Data.Foldable as F
@@ -58,8 +59,9 @@ class Alignment a where
   -- alignment.
   type Opposite a
   -- ^ The opposite type of 'BuiltBox'.
-  buildBox :: a -> Radiant -> Either (Opposite a) Core -> BuiltBox a
-  -- ^ Builds boxes of type 'BuiltBox'.
+  convert :: a -> Radiant -> Opposite a -> BuiltBox a
+  wrap :: a -> Radiant -> BuiltBox a -> BuiltBox a
+  fromCore :: a -> Radiant -> Core -> BuiltBox a
   segment :: Radiant -> Int -> BuiltBox a
   -- ^ Builds a line segment; that is, a one-dimensional box that has
   -- the given height or width.  This is often all you need if you are
@@ -91,9 +93,17 @@ newtype Height = Height Int
 class HasHeight a where
   height :: a -> Int
 
+instance (HasHeight a, HasHeight b, HasHeight c)
+  => HasHeight (S3 a b c) where
+  height = caseS3 height height height
+
 -- | A count of columns
 newtype Width = Width Int
   deriving (Eq, Ord, Show)
+
+instance (HasWidth a, HasWidth b, HasWidth c)
+  => HasWidth (S3 a b c) where
+  width = caseS3 width width width
 
 class HasWidth a where
   width :: a -> Int
@@ -149,44 +159,44 @@ class Box a where
   makeBox :: a -> Seq (Seq Rod)
 
 -- | Payload for a box that is oriented around a vertical axis.
-data PayloadV = PayloadV (Align Vert) Radiant (Either BoxH Core)
+data PayloadV = PayloadV (Align Vert) Radiant (S3 BoxV BoxH Core)
 
 instance HasHeight PayloadV where
-  height (PayloadV _ _ ei) = either height height ei
+  height (PayloadV _ _ s3) = height s3
 
 instance HasWidth PayloadV where
-  width (PayloadV _ _ ei) = either width width ei
+  width (PayloadV _ _ s3) = width s3
 
 instance LeftRight PayloadV where
-  port (PayloadV a _ ei) = case a of
+  port (PayloadV a _ s3) = case a of
     NonCenter ALeft -> 0
-    NonCenter ARight -> either width width ei
-    Center -> fst . split $ either width width ei
+    NonCenter ARight -> width s3
+    Center -> fst . split . width $ s3
 
-  starboard (PayloadV a _ ei) = case a of
-    NonCenter ALeft -> either width width ei
+  starboard (PayloadV a _ s3) = case a of
+    NonCenter ALeft -> width s3
     NonCenter ARight -> 0
-    Center -> snd . split $ either width width ei
+    Center -> snd . split . width $ s3
 
 -- | Payload for a box that is oriented around a horizontal axis.
-data PayloadH = PayloadH (Align Horiz) Radiant (Either BoxV Core)
+data PayloadH = PayloadH (Align Horiz) Radiant (S3 BoxV BoxH Core)
 
 instance HasHeight PayloadH where
-  height (PayloadH _ _ ei) = either height height ei
+  height (PayloadH _ _ s3) = height s3
 
 instance HasWidth PayloadH where
-  width (PayloadH _ _ ei) = either width width ei
+  width (PayloadH _ _ s3) = width s3
 
 instance UpDown PayloadH where
-  above (PayloadH a _ ei) = case a of
+  above (PayloadH a _ s3) = case a of
     NonCenter ATop -> 0
-    NonCenter ABottom -> either height height ei
-    Center -> fst . split $ either height height ei
+    NonCenter ABottom -> height s3
+    Center -> fst . split . height $ s3
 
-  below (PayloadH a _ ei) = case a of
-    NonCenter ATop -> either height height ei
+  below (PayloadH a _ s3) = case a of
+    NonCenter ATop -> height s3
     NonCenter ABottom -> 0
-    Center -> snd . split $ either height height ei
+    Center -> snd . split . height $ s3
 
 -- | A 'BoxV' box contains zero or more blocks.  Each block is
 -- oriented relative to a single vertical axis.  Blocks are aligned
@@ -233,9 +243,10 @@ instance Box BoxH where
         x :< xs -> F.foldl' comb x xs
         where
           comb acc sq = Seq.zipWith (<>) acc sq
-      equalize bhp@(PayloadH _ rd ei) = tp <> this <> bot
+      equalize bhp@(PayloadH _ rd s3) = tp <> this <> bot
         where
-          this = either makeBox (fmap Seq.singleton $ rodsFromCore rd) ei
+          this = caseS3 makeBox makeBox
+            (fmap Seq.singleton $ rodsFromCore rd) s3
           tp = Seq.replicate (max 0 (maxTop - above bhp)) pad
           bot = Seq.replicate (max 0 (maxBot - below bhp)) pad
           pad = Seq.singleton . Rod . Left $ (w, rd)
@@ -254,9 +265,10 @@ instance Box BoxV where
   makeBox bx@(BoxV sqnce) = mergeHoriz $ fmap equalize sqnce
     where
       mergeHoriz = F.foldl' (<>) Seq.empty
-      equalize (PayloadV a rd ei) = fmap addLeftRight this
+      equalize (PayloadV a rd s3) = fmap addLeftRight this
         where
-          this = either makeBox (fmap Seq.singleton $ rodsFromCore rd) ei
+          this = caseS3 makeBox makeBox
+            (fmap Seq.singleton $ rodsFromCore rd) s3
           addLeftRight lin = padder lenLft <> lin <> padder lenRgt
             where
               lenLin = rodsLength lin
@@ -276,19 +288,27 @@ instance Box BoxV where
 instance Alignment (Align Horiz) where
   type BuiltBox (Align Horiz) = BoxH
   type Opposite (Align Horiz) = BoxV
-  buildBox a r ei = BoxH . Seq.singleton $
-    PayloadH a r ei
+  convert a r b = BoxH . Seq.singleton $
+    PayloadH a r (S3a b)
+  wrap a r b = BoxH . Seq.singleton $
+    PayloadH a r (S3b b)
+  fromCore a r c = BoxH . Seq.singleton $
+    PayloadH a r (S3c c)
   segment r i = BoxH . Seq.singleton $
-    PayloadH (NonCenter ATop) r (Right . Core . Right $
+    PayloadH (NonCenter ATop) r (S3c . Core . Right $
       (Height 0, Width i))
 
 instance Alignment (Align Vert) where
   type BuiltBox (Align Vert) = BoxV
   type Opposite (Align Vert) = BoxH
-  buildBox a r ei = BoxV . Seq.singleton $
-    PayloadV a r ei
+  convert a r b = BoxV . Seq.singleton $
+    PayloadV a r (S3b b)
+  wrap a r b = BoxV . Seq.singleton $
+    PayloadV a r (S3a b)
+  fromCore a r c = BoxV . Seq.singleton $
+    PayloadV a r (S3c c)
   segment r i = BoxV . Seq.singleton $
-    PayloadV (NonCenter ALeft) r (Right . Core . Right $
+    PayloadV (NonCenter ALeft) r (S3c . Core . Right $
       (Height i, Width 0))
 
 -- | Construct a box from a single 'Chunk'.  Either a 'BoxH' or a
@@ -299,7 +319,7 @@ fromChunk
   -> Radiant
   -> Chunk
   -> BuiltBox a
-fromChunk a r c = buildBox a r (Right (Core (Left c)))
+fromChunk a r c = fromCore a r (Core (Left c))
 
 -- | Construct a blank box.  Useful for adding in background spacers.
 -- For a function that builds one-dimensional boxes, see 'segment',
@@ -312,17 +332,7 @@ blank
   -> Height
   -> Width
   -> BuiltBox a
-blank a r h w = buildBox a r (Right (Core (Right (h, w))))
-
--- | Converts a 'BoxH' to a 'BoxV', and a 'BoxV' to a 'BoxH'.  Useful
--- when combining boxes into larger boxes.
-convert
-  :: Alignment a
-  => a
-  -> Radiant
-  -> Opposite a
-  -> BuiltBox a
-convert a r o = buildBox a r (Left o)
+blank a r h w = fromCore a r (Core (Right (h, w)))
 
 -- | Convert a box to a 'Seq' of 'Chunk' in preparation for rendering.
 -- Use 'F.toList' to convert the 'Seq' of 'Chunk' to a list so that

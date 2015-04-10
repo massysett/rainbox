@@ -37,6 +37,9 @@ quickcheck = closedOpen "QuickCheck" [2,7] [2,9]
 chasingBottoms :: Package
 chasingBottoms = closedOpen "ChasingBottoms" [1,3,0] [1,4]
 
+anonymousSums :: Package
+anonymousSums = closedOpen "anonymous-sums" [0,4,0,0] [0,5]
+
 properties :: Properties
 properties = blank
   { name = "rainbox"
@@ -77,6 +80,7 @@ libPackages =
   , bytestring
   , containers
   , text
+  , anonymousSums
   ]
 
 libDeps :: HasBuildInfo a => a
