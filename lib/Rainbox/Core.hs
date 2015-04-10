@@ -59,9 +59,9 @@ class Alignment a where
   -- alignment.
   type Opposite a
   -- ^ The opposite type of 'BuiltBox'.
-  convert :: a -> Radiant -> Opposite a -> BuiltBox a
-  wrap :: a -> Radiant -> BuiltBox a -> BuiltBox a
-  fromCore :: a -> Radiant -> Core -> BuiltBox a
+  convert :: Align a -> Radiant -> Opposite a -> BuiltBox a
+  wrap :: Align a -> Radiant -> BuiltBox a -> BuiltBox a
+  fromCore :: Align a -> Radiant -> Core -> BuiltBox a
   segment :: Radiant -> Int -> BuiltBox a
   -- ^ Builds a line segment; that is, a one-dimensional box that has
   -- the given height or width.  This is often all you need if you are
@@ -285,9 +285,9 @@ instance Box BoxV where
                 | otherwise = Seq.singleton . Rod . Left
                       $ (len, rd)
 
-instance Alignment (Align Horiz) where
-  type BuiltBox (Align Horiz) = BoxH
-  type Opposite (Align Horiz) = BoxV
+instance Alignment Horiz where
+  type BuiltBox Horiz = BoxH
+  type Opposite Horiz = BoxV
   convert a r b = BoxH . Seq.singleton $
     PayloadH a r (S3a b)
   wrap a r b = BoxH . Seq.singleton $
@@ -298,9 +298,9 @@ instance Alignment (Align Horiz) where
     PayloadH (NonCenter ATop) r (S3c . Core . Right $
       (Height 0, Width i))
 
-instance Alignment (Align Vert) where
-  type BuiltBox (Align Vert) = BoxV
-  type Opposite (Align Vert) = BoxH
+instance Alignment Vert where
+  type BuiltBox Vert = BoxV
+  type Opposite Vert = BoxH
   convert a r b = BoxV . Seq.singleton $
     PayloadV a r (S3b b)
   wrap a r b = BoxV . Seq.singleton $
@@ -315,7 +315,7 @@ instance Alignment (Align Vert) where
 -- 'BoxV' will be built depending on the return type of the function.
 fromChunk
   :: Alignment a
-  => a
+  => Align a
   -> Radiant
   -> Chunk
   -> BuiltBox a
@@ -327,7 +327,7 @@ fromChunk a r c = fromCore a r (Core (Left c))
 -- separate other boxes.
 blank
   :: Alignment a
-  => a
+  => Align a
   -> Radiant
   -> Height
   -> Width
@@ -393,11 +393,11 @@ instance IsList (RowsCols a) where
 
 -- | A set of rows; each row must appear in top-to-bottom
 -- order.
-type Rows = RowsCols (Align Horiz)
+type Rows = RowsCols Horiz
 
 -- | A set of columns; each column must appear in
 -- left-to-right order.
-type Columns = RowsCols (Align Vert)
+type Columns = RowsCols Vert
 
 -- | Create a table for a set of either rows or columns.
 table
