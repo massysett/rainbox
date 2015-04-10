@@ -16,9 +16,9 @@ module Rainbox
   , BoxV
 
   -- * Box and block construction
-  , blockFromChunk
-  , blankBlock
-  , convertBox
+  , fromChunk
+  , blank
+  , convert
 
   -- * Rendering
   , render

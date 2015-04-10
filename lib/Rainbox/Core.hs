@@ -21,12 +21,12 @@ import GHC.Exts (IsList(..))
 data Align a = Center | NonCenter a
   deriving (Eq, Show)
 
--- | Vertical alignment.
-data Vert = ATop | ABottom
+-- | Horizontal alignment.
+data Horiz = ATop | ABottom
   deriving (Eq, Show)
 
--- | Horizontal alignment.
-data Horiz = ALeft | ARight
+-- | Vertical alignment.
+data Vert = ALeft | ARight
   deriving (Eq, Show)
 
 -- | Place this block so that it is centered on the vertical axis or
@@ -35,22 +35,22 @@ center :: Align a
 center = Center
 
 -- | Place this block's left edge on the vertical axis.
-left :: Align Horiz
+left :: Align Vert
 left = NonCenter ALeft
 
 -- | Place this block's right edge on the vertical axis.
-right :: Align Horiz
+right :: Align Vert
 right = NonCenter ARight
 
 -- | Place this box's top edge on the horizontal axis.
-top :: Align Vert
+top :: Align Horiz
 top = NonCenter ATop
 
 -- | Place this box's bottom edge on the horizontal axis.
-bottom :: Align Vert
+bottom :: Align Horiz
 bottom = NonCenter ABottom
 
--- | Class for alignments; both 'Align' 'Horiz' and 'Align' 'Vert' are
+-- | Class for alignments; both 'Align' 'Vert' and 'Align' 'Horiz' are
 -- instances of this class.
 class Alignment a where
   type BuiltBox a
@@ -149,41 +149,41 @@ class Box a where
   makeBox :: a -> Seq (Seq Rod)
 
 -- | Payload for a box that is oriented around a vertical axis.
-data BoxVP = BoxVP (Align Horiz) Radiant (Either BoxH Core)
+data PayloadV = PayloadV (Align Vert) Radiant (Either BoxH Core)
 
-instance HasHeight BoxVP where
-  height (BoxVP _ _ ei) = either height height ei
+instance HasHeight PayloadV where
+  height (PayloadV _ _ ei) = either height height ei
 
-instance HasWidth BoxVP where
-  width (BoxVP _ _ ei) = either width width ei
+instance HasWidth PayloadV where
+  width (PayloadV _ _ ei) = either width width ei
 
-instance LeftRight BoxVP where
-  port (BoxVP a _ ei) = case a of
+instance LeftRight PayloadV where
+  port (PayloadV a _ ei) = case a of
     NonCenter ALeft -> 0
     NonCenter ARight -> either width width ei
     Center -> fst . split $ either width width ei
 
-  starboard (BoxVP a _ ei) = case a of
+  starboard (PayloadV a _ ei) = case a of
     NonCenter ALeft -> either width width ei
     NonCenter ARight -> 0
     Center -> snd . split $ either width width ei
 
 -- | Payload for a box that is oriented around a horizontal axis.
-data BoxHP = BoxHP (Align Vert) Radiant (Either BoxV Core)
+data PayloadH = PayloadH (Align Horiz) Radiant (Either BoxV Core)
 
-instance HasHeight BoxHP where
-  height (BoxHP _ _ ei) = either height height ei
+instance HasHeight PayloadH where
+  height (PayloadH _ _ ei) = either height height ei
 
-instance HasWidth BoxHP where
-  width (BoxHP _ _ ei) = either width width ei
+instance HasWidth PayloadH where
+  width (PayloadH _ _ ei) = either width width ei
 
-instance UpDown BoxHP where
-  above (BoxHP a _ ei) = case a of
+instance UpDown PayloadH where
+  above (PayloadH a _ ei) = case a of
     NonCenter ATop -> 0
     NonCenter ABottom -> either height height ei
     Center -> fst . split $ either height height ei
 
-  below (BoxHP a _ ei) = case a of
+  below (PayloadH a _ ei) = case a of
     NonCenter ATop -> either height height ei
     NonCenter ABottom -> 0
     Center -> snd . split $ either height height ei
@@ -193,8 +193,8 @@ instance UpDown BoxHP where
 -- verically along this axis, rather like a flagpole.  'BoxV' can be
 -- combined using the 'Monoid' functions.  When you are done adding
 -- blocks to the 'BoxV' by combining separate 'BoxV', you can convert
--- it to a 'BoxH' using 'convertBox'.
-newtype BoxV = BoxV (Seq BoxVP)
+-- it to a 'BoxH' using 'convert'.
+newtype BoxV = BoxV (Seq PayloadV)
 
 instance Monoid BoxV where
   mempty = BoxV mempty
@@ -215,25 +215,25 @@ instance HasHeight BoxV where
 -- horizontally along this axis, rather like railroad cars on a track.
 -- 'BoxH' can be combined using the 'Monoid' functions.  When you are
 -- done adding blocks to the 'BoxH' by combining separate 'BoxH', you
--- can convert it to a single 'BoxV' using 'convertBox'.
-newtype BoxH = BoxH (Seq BoxHP)
+-- can convert it to a single 'BoxV' using 'convert'.
+newtype BoxH = BoxH (Seq PayloadH)
 
 instance Monoid BoxH where
   mempty = BoxH mempty
   mappend (BoxH x) (BoxH y) = BoxH $ x <> y
 
 instance Box BoxH where
-  makeBox bx@(BoxH sqnce) = mergeHoriz $ fmap equalize sqnce
+  makeBox bx@(BoxH sqnce) = mergeVert $ fmap equalize sqnce
     where
       maxTop = above bx
       maxBot = below bx
       w = width bx
-      mergeHoriz sqn = case viewl sqn of
+      mergeVert sqn = case viewl sqn of
         EmptyL -> Seq.empty
         x :< xs -> F.foldl' comb x xs
         where
           comb acc sq = Seq.zipWith (<>) acc sq
-      equalize bhp@(BoxHP _ rd ei) = tp <> this <> bot
+      equalize bhp@(PayloadH _ rd ei) = tp <> this <> bot
         where
           this = either makeBox (fmap Seq.singleton $ rodsFromCore rd) ei
           tp = Seq.replicate (max 0 (maxTop - above bhp)) pad
@@ -251,10 +251,10 @@ instance HasWidth BoxH where
   width (BoxH sq) = F.sum . fmap width $ sq
 
 instance Box BoxV where
-  makeBox bx@(BoxV sqnce) = mergeVert $ fmap equalize sqnce
+  makeBox bx@(BoxV sqnce) = mergeHoriz $ fmap equalize sqnce
     where
-      mergeVert = F.foldl' (<>) Seq.empty
-      equalize (BoxVP a rd ei) = fmap addLeftRight this
+      mergeHoriz = F.foldl' (<>) Seq.empty
+      equalize (PayloadV a rd ei) = fmap addLeftRight this
         where
           this = either makeBox (fmap Seq.singleton $ rodsFromCore rd) ei
           addLeftRight lin = padder lenLft <> lin <> padder lenRgt
@@ -273,56 +273,56 @@ instance Box BoxV where
                 | otherwise = Seq.singleton . Rod . Left
                       $ (len, rd)
 
-instance Alignment (Align Vert) where
-  type BuiltBox (Align Vert) = BoxH
-  type Opposite (Align Vert) = BoxV
+instance Alignment (Align Horiz) where
+  type BuiltBox (Align Horiz) = BoxH
+  type Opposite (Align Horiz) = BoxV
   buildBox a r ei = BoxH . Seq.singleton $
-    BoxHP a r ei
+    PayloadH a r ei
   segment r i = BoxH . Seq.singleton $
-    BoxHP (NonCenter ATop) r (Right . Core . Right $
+    PayloadH (NonCenter ATop) r (Right . Core . Right $
       (Height 0, Width i))
 
-instance Alignment (Align Horiz) where
-  type BuiltBox (Align Horiz) = BoxV
-  type Opposite (Align Horiz) = BoxH
+instance Alignment (Align Vert) where
+  type BuiltBox (Align Vert) = BoxV
+  type Opposite (Align Vert) = BoxH
   buildBox a r ei = BoxV . Seq.singleton $
-    BoxVP a r ei
+    PayloadV a r ei
   segment r i = BoxV . Seq.singleton $
-    BoxVP (NonCenter ALeft) r (Right . Core . Right $
+    PayloadV (NonCenter ALeft) r (Right . Core . Right $
       (Height i, Width 0))
 
 -- | Construct a box from a single 'Chunk'.  Either a 'BoxH' or a
 -- 'BoxV' will be built depending on the return type of the function.
-blockFromChunk
+fromChunk
   :: Alignment a
   => a
   -> Radiant
   -> Chunk
   -> BuiltBox a
-blockFromChunk a r c = buildBox a r (Right (Core (Left c)))
+fromChunk a r c = buildBox a r (Right (Core (Left c)))
 
 -- | Construct a blank box.  Useful for adding in background spacers.
 -- For a function that builds one-dimensional boxes, see 'segment',
 -- which often is all you need if you are making a blank box to
 -- separate other boxes.
-blankBlock
+blank
   :: Alignment a
   => a
   -> Radiant
   -> Height
   -> Width
   -> BuiltBox a
-blankBlock a r h w = buildBox a r (Right (Core (Right (h, w))))
+blank a r h w = buildBox a r (Right (Core (Right (h, w))))
 
 -- | Converts a 'BoxH' to a 'BoxV', and a 'BoxV' to a 'BoxH'.  Useful
 -- when combining boxes into larger boxes.
-convertBox
+convert
   :: Alignment a
   => a
   -> Radiant
   -> Opposite a
   -> BuiltBox a
-convertBox a r o = buildBox a r (Left o)
+convert a r o = buildBox a r (Left o)
 
 -- | Convert a box to a 'Seq' of 'Chunk' in preparation for rendering.
 -- Use 'F.toList' to convert the 'Seq' of 'Chunk' to a list so that
@@ -383,11 +383,11 @@ instance IsList (RowsCols a) where
 
 -- | A set of rows; each row must appear in top-to-bottom
 -- order.
-type Rows = RowsCols (Align Vert)
+type Rows = RowsCols (Align Horiz)
 
 -- | A set of columns; each column must appear in
 -- left-to-right order.
-type Columns = RowsCols (Align Horiz)
+type Columns = RowsCols (Align Vert)
 
 -- | Create a table for a set of either rows or columns.
 table
