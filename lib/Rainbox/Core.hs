@@ -11,6 +11,7 @@ import Data.Sequence (Seq, ViewL(..), viewl, (|>), (<|))
 import qualified Data.Foldable as F
 import qualified Data.Sequence as Seq
 import qualified Data.Text as X
+import qualified Data.Map as M
 
 -- # Alignment
 
@@ -65,11 +66,17 @@ class Alignment a where
   fromCore :: Align a -> Radiant -> Core -> BuiltBox a
   -- ^ Creates a 'BoxV' or a 'BoxH' from a 'Core'.
 
-  segment :: Radiant -> Int -> BuiltBox a
-  -- ^ Builds a line segment; that is, a one-dimensional box that has
-  -- the given height or width.  This is often all you need if you are
-  -- making a box solely to separate other boxes.  To build
-  -- two-dimensional blank boxes, see 'blank'.
+  spacer :: Radiant -> Int -> BuiltBox a
+  -- ^ Builds a one-dimensional box of the given size; its single
+  -- dimension is on the same alignment as the axis.  When added to a
+  -- box, it will insert blank space of the given length.  For a
+  -- 'BoxH', this produces a horizontal line; for a 'BoxV', a vertical
+  -- line.
+
+  spreader :: Align a -> Int -> BuiltBox a
+  -- ^ Builds a one-dimensional box of the given size; its single
+  -- dimension is perpendicular to the axis.  This can be used to make
+  -- a 'BoxV' wider or a 'BoxH' taller.
 
 -- | Things that are oriented around a vertical axis.
 class LeftRight a where
@@ -297,9 +304,12 @@ instance Alignment Horiz where
     PayloadH a r (S3b b)
   fromCore a r c = BoxH . Seq.singleton $
     PayloadH a r (S3c c)
-  segment r i = BoxH . Seq.singleton $
+  spacer r i = BoxH . Seq.singleton $
     PayloadH (NonCenter ATop) r (S3c . Core . Right $
-      (Height 0, Width i))
+      (Height 0, Width (max 0 i)))
+  spreader a i = BoxH . Seq.singleton $
+    PayloadH a noColorRadiant (S3c . Core . Right $
+      (Height (max 0 i), Width 0))
 
 instance Alignment Vert where
   type BuiltBox Vert = BoxV
@@ -310,9 +320,12 @@ instance Alignment Vert where
     PayloadV a r (S3a b)
   fromCore a r c = BoxV . Seq.singleton $
     PayloadV a r (S3c c)
-  segment r i = BoxV . Seq.singleton $
+  spacer r i = BoxV . Seq.singleton $
     PayloadV (NonCenter ALeft) r (S3c . Core . Right $
-      (Height i, Width 0))
+      (Height (max 0 i), Width 0))
+  spreader a i = BoxV . Seq.singleton $
+    PayloadV a noColorRadiant (S3c . Core . Right $
+      (Height 0, Width (max 0 i)))
 
 -- | Construct a box from a single 'Chunk'.  Either a 'BoxH' or a
 -- 'BoxV' will be built depending on the return type of the function.
@@ -325,7 +338,7 @@ fromChunk
 fromChunk a r c = fromCore a r (Core (Left c))
 
 -- | Construct a blank box.  Useful for adding in background spacers.
--- For a function that builds one-dimensional boxes, see 'segment',
+-- For a function that builds one-dimensional boxes, see 'spacer',
 -- which often is all you need if you are making a blank box to
 -- separate other boxes.
 blank
@@ -345,84 +358,94 @@ render = join . chunksFromRods . makeBox
 
 -- # Tables
 
--- | A row of text in a single cell.
-type CellRow = Seq Chunk
+data Cell = Cell
+  { cellRows :: Seq (Seq Chunk)
+  , cellHoriz :: Align Horiz
+  , cellVert :: Align Vert
+  , cellBackground :: Radiant
+  }
 
--- | A single cell; resembles a spreasheet cell.  It can have multiple
--- rows of text.
-type Cell = Seq CellRow
+emptyCell :: Cell
+emptyCell = Cell Seq.empty center center noColorRadiant
 
--- | Either a row or a column.  If it's a row, then each
--- cell must appear in the row in left to right order; if it's a
--- column, each cell must appear in the column in top to bottom order.
-type RowCol a = Seq (Align a, Radiant, Cell)
+-- Cells by row:
+-- 0. Ensure each row is equal length
+-- 1. Create one BoxV for each cell
+-- 2. Create widest cell map
+-- 3. Pad each BoxV to appropriate width, using cellVert alignment
+-- 4. Convert each BoxV to BoxH, using cellHoriz and cellBackground
+-- 5. mconcatSeq each row
+-- 6. Convert each row to BoxV; use default background
+--    and center alignment
+-- 7. mconcatSeq the rows
 
--- | A row; each value must appear in the row in
--- left-to-right order.
-type Row = RowCol Horiz
-
--- | A column; each value must appear in the column in
--- top-to-bottom order.
-type Column a = RowCol Vert
-
--- | Either a set of rows or a set of columns.  If it's a
--- set of rows, each row must appear in top to bottom order; if it's a
--- set of columns, each column must appear in left-to-right order.
-type RowsCols a = Seq (RowCol a)
-
--- | A set of rows; each row must appear in top-to-bottom
--- order.
-type Rows = RowsCols Horiz
-
--- | A set of columns; each column must appear in
--- left-to-right order.
-type Columns = RowsCols Vert
-
--- | Create a table for a set of either rows or columns.
-{-
-table
-  :: Alignment a
-  => RowsCols a
-  -> Opposite a
--}
-table
-  :: Alignment a
-  => RowsCols a
-  -> Seq (BuiltBox a)
-table
-  = fmap mconcatSeq
-  . fmap (fmap cellToBox)
-  . equalize
-{-
+tableByRows :: Seq (Seq Cell) -> BoxV
+tableByRows
   = mconcatSeq
-  . fmap (convert center noColorRadiant)
+  . fmap rowToBoxV
   . fmap mconcatSeq
-  . fmap (fmap cellToBox)
+  . fmap (fmap toBoxH)
+  . uncurry padBoxV
+  . addWidthMap
+  . fmap (fmap cellToBoxV)
   . equalize
--}
 
-cellToBox :: (Align a, Radiant, Cell) -> BuiltBox a
-cellToBox = undefined
+rowToBoxV :: BoxH -> BoxV
+rowToBoxV bv = convert left noColorRadiant bv
+
+cellToBoxV :: Cell -> (BoxV, Align Horiz, Radiant)
+cellToBoxV (Cell rs ah av rd) = (bx, ah, rd)
+  where
+    bx = convert av rd
+      . mconcatSeq
+      . fmap (mconcatSeq . fmap (fromChunk top rd))
+      $ rs
+
+toBoxH
+  :: (BoxV, Align Horiz, Radiant)
+  -> BoxH
+toBoxH (bv, ah, rd) = convert ah rd bv
+
+addWidthMap
+  :: Seq (Seq (BoxV, b, c))
+  -> (M.Map Int (Int, Int), Seq (Seq (BoxV, b, c)))
+addWidthMap sqnce = (m, sqnce)
+  where
+    m = widestCellMap . fmap (fmap (\(a, _, _) -> a)) $ sqnce
+
+padBoxV
+  :: M.Map Int (Int, Int)
+  -> Seq (Seq (BoxV, a, b))
+  -> Seq (Seq (BoxV, a, b))
+padBoxV mp = fmap (Seq.mapWithIndex f)
+  where
+    f idx (bx, a, b) = (bx <> padLeft <> padRight, a, b)
+      where
+        (lenL, lenR) = mp M.! idx
+        padLeft = spreader right lenL
+        padRight = spreader left lenR
+
+
+widestCellMap :: Seq (Seq BoxV) -> M.Map Int (Int, Int)
+widestCellMap = F.foldl' outer M.empty
+  where
+    outer mpOuter = Seq.foldlWithIndex inner mpOuter
+      where
+        inner mpInner idx bx = case M.lookup idx mpInner of
+          Nothing -> M.insert idx (port bx, starboard bx) mpInner
+          Just (pOld, sOld) -> M.insert idx
+            (max pOld (port bx), max sOld (starboard bx)) mpInner
+
+
+tableByCols :: Seq (Seq Cell) -> BoxH
+tableByCols = undefined
 
 equalize :: Seq (Seq a) -> Seq (Seq a)
 equalize = undefined
 
-mconcatSeq :: Alignment a => Seq (BuiltBox a) -> BuiltBox a
+mconcatSeq :: Monoid a => Seq a -> a
 mconcatSeq = F.foldl' (<>) mempty
 
-{-
--- | Create a table from a set of rows.
-tableByRows
-  :: Rows
-  -> BoxV
-tableByRows = table
-
--- | Create a table from a set of columns.
-tableByColumns
-  :: Columns
-  -> BoxH
-tableByColumns = table
--}
 
 -- # Utilities
 
