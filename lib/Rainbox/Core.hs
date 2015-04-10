@@ -1,5 +1,4 @@
 {-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE Trustworthy #-}
 {-# LANGUAGE OverloadedLists #-}
@@ -60,8 +59,15 @@ class Alignment a where
   type Opposite a
   -- ^ The opposite type of 'BuiltBox'.
   convert :: Align a -> Radiant -> Opposite a -> BuiltBox a
+  -- ^ Wraps a 'BoxH' and places it in a 'BoxV', and vice-versa.
+
   wrap :: Align a -> Radiant -> BuiltBox a -> BuiltBox a
+  -- ^ Wraps a 'BoxV' inside of a new 'BoxV', or wraps a 'BoxH' inside
+  -- of a new 'BoxH'.
+
   fromCore :: Align a -> Radiant -> Core -> BuiltBox a
+  -- ^ Creates a 'BoxV' or a 'BoxH' from a 'Core'.
+
   segment :: Radiant -> Int -> BuiltBox a
   -- ^ Builds a line segment; that is, a one-dimensional box that has
   -- the given height or width.  This is often all you need if you are
