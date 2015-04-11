@@ -48,7 +48,7 @@ top = NonCenter ATop
 bottom :: Align Horiz
 bottom = NonCenter ABottom
 
--- | Class for alignments; both 'Align' 'Vert' and 'Align' 'Horiz' are
+-- | Class for alignments; both 'Vert' and 'Horiz' are
 -- instances of this class.
 class Alignment a where
   type BuiltBox a
@@ -210,10 +210,10 @@ instance UpDown PayloadH where
 
 -- | A 'BoxV' box contains zero or more blocks.  Each block is
 -- oriented relative to a single vertical axis.  Blocks are aligned
--- verically along this axis, rather like a flagpole.  'BoxV' can be
--- combined using the 'Monoid' functions.  When you are done adding
--- blocks to the 'BoxV' by combining separate 'BoxV', you can convert
--- it to a 'BoxH' using 'convert'.
+-- verically along this axis.  'BoxV' can be combined using the
+-- 'Monoid' functions.  When you are done adding blocks to the 'BoxV'
+-- by combining separate 'BoxV', you can convert it to a 'BoxH' using
+-- 'convert'.
 newtype BoxV = BoxV (Seq PayloadV)
 
 instance Monoid BoxV where
@@ -232,10 +232,10 @@ instance HasHeight BoxV where
 
 -- | A 'BoxH' box contains zero or more blocks.  Each block is
 -- oriented relative to a single horizontal axis.  Blocks are aligned
--- horizontally along this axis, rather like railroad cars on a track.
--- 'BoxH' can be combined using the 'Monoid' functions.  When you are
--- done adding blocks to the 'BoxH' by combining separate 'BoxH', you
--- can convert it to a single 'BoxV' using 'convert'.
+-- horizontally along this axis.  'BoxH' can be combined using the
+-- 'Monoid' functions.  When you are done adding blocks to the 'BoxH'
+-- by combining separate 'BoxH', you can convert it to a single 'BoxV'
+-- using 'convert'.
 newtype BoxH = BoxH (Seq PayloadH)
 
 instance Monoid BoxH where
@@ -338,9 +338,8 @@ fromChunk
 fromChunk a r c = fromCore a r (Core (Left c))
 
 -- | Construct a blank box.  Useful for adding in background spacers.
--- For a function that builds one-dimensional boxes, see 'spacer',
--- which often is all you need if you are making a blank box to
--- separate other boxes.
+-- For a function that build one-dimensional boxes, see 'spacer' and
+-- 'spreader'.
 blank
   :: Alignment a
   => Align a
@@ -388,7 +387,7 @@ tableByRows
   . uncurry padBoxV
   . addWidthMap
   . fmap (fmap cellToBoxV)
-  . equalize
+  . equalize emptyCell
 
 rowToBoxV :: BoxH -> BoxV
 rowToBoxV bv = convert left noColorRadiant bv
@@ -396,10 +395,10 @@ rowToBoxV bv = convert left noColorRadiant bv
 cellToBoxV :: Cell -> (BoxV, Align Horiz, Radiant)
 cellToBoxV (Cell rs ah av rd) = (bx, ah, rd)
   where
-    bx = convert av rd
-      . mconcatSeq
-      . fmap (mconcatSeq . fmap (fromChunk top rd))
-      $ rs
+    bx = mconcatSeq
+       . fmap (convert av rd)
+       . fmap (mconcatSeq . fmap (fromChunk top rd))
+       $ rs
 
 toBoxH
   :: (BoxV, Align Horiz, Radiant)
@@ -436,12 +435,88 @@ widestCellMap = F.foldl' outer M.empty
           Just (pOld, sOld) -> M.insert idx
             (max pOld (port bx), max sOld (starboard bx)) mpInner
 
+-- Table by columns:
+--
+-- 0.  Equalize columns
+-- 1.  Create one BoxH for each cell
+-- 2.  Create tallest cell map
+-- 3.  Pad each BoxH to appropriate height, using cellHeight alignment
+-- 4.  Convert each BoxH to BoxV, using cellVert and cellBackground
+-- 5.  mconcatSeq each column
+-- 6.  Convert each column to BoxH
+-- 7.  mconcatSeq the columns
 
-tableByCols :: Seq (Seq Cell) -> BoxH
-tableByCols = undefined
+tableByColumns :: Seq (Seq Cell) -> BoxH
+tableByColumns
+  = mconcatSeq
+  . fmap rowToBoxH
+  . fmap mconcatSeq
+  . fmap (fmap toBoxV)
+  . uncurry padBoxH
+  . addHeightMap
+  . fmap (fmap cellToBoxH)
+  . equalize emptyCell
 
-equalize :: Seq (Seq a) -> Seq (Seq a)
-equalize = undefined
+
+rowToBoxH :: BoxV -> BoxH
+rowToBoxH bv = convert top noColorRadiant bv
+
+
+cellToBoxH :: Cell -> (BoxH, Align Vert, Radiant)
+cellToBoxH (Cell rs ah av rd) = (bx, av, rd)
+  where
+    bx = convert ah rd
+       . mconcatSeq
+       . fmap (convert av rd)
+       . fmap (mconcatSeq . fmap (fromChunk top rd))
+       $ rs
+
+addHeightMap
+  :: Seq (Seq (BoxH, b, c))
+  -> (M.Map Int (Int, Int), Seq (Seq (BoxH, b, c)))
+addHeightMap sqnce = (m, sqnce)
+  where
+    m = tallestCellMap . fmap (fmap (\(a, _, _) -> a)) $ sqnce
+
+tallestCellMap :: Seq (Seq BoxH) -> M.Map Int (Int, Int)
+tallestCellMap = F.foldl' outer M.empty
+  where
+    outer mpOuter = Seq.foldlWithIndex inner mpOuter
+      where
+        inner mpInner idx bx = case M.lookup idx mpInner of
+          Nothing -> M.insert idx (above bx, below bx) mpInner
+          Just (aOld, bOld) -> M.insert idx
+            (max aOld (above bx), max bOld (below bx)) mpInner
+
+
+padBoxH
+  :: M.Map Int (Int, Int)
+  -> Seq (Seq (BoxH, a, b))
+  -> Seq (Seq (BoxH, a, b))
+padBoxH mp = fmap (Seq.mapWithIndex f)
+  where
+    f idx (bx, a, b) = (bx <> padTop <> padBot, a, b)
+      where
+        (lenT, lenB) = mp M.! idx
+        padTop = spreader bottom lenT
+        padBot = spreader top lenB
+
+
+toBoxV
+  :: (BoxH, Align Vert, Radiant)
+  -> BoxV
+toBoxV (bh, av, rd) = convert av rd bh
+
+
+-- | Ensures that each inner 'Seq' is the same length by adding the
+-- given empty element where needed.
+equalize :: a -> Seq (Seq a) -> Seq (Seq a)
+equalize emp sqnce = fmap adder sqnce
+  where
+    maxLen = F.foldl' max 0 . fmap Seq.length $ sqnce
+    adder sq = sq <> pad
+      where
+        pad = Seq.replicate (max 0 (maxLen - Seq.length sq)) emp
 
 mconcatSeq :: Monoid a => Seq a -> a
 mconcatSeq = F.foldl' (<>) mempty

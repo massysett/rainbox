@@ -8,7 +8,13 @@ module Rainbox
   , right
   , top
   , bottom
-  , Alignment(BuiltBox, Opposite, segment)
+  , Alignment
+    ( BuiltBox
+    , Opposite
+    , convert
+    , wrap
+    , spreader
+    , spacer )
 
   -- * Boxes
   , Box
@@ -18,21 +24,12 @@ module Rainbox
   -- * Box and block construction
   , fromChunk
   , blank
-  , convert
 
   -- * Rendering
   , render
 
   -- * Tables
-  , CellRow
-  , Cell
-  , RowCol
-  , Row
-  , Column
-  , RowsCols
-  , Rows
-  , Columns
-  , table
+  , Cell(..)
   , tableByRows
   , tableByColumns
 
