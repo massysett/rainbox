@@ -1,4 +1,3 @@
-{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
 module Rainbox.Core where
@@ -83,8 +82,8 @@ rodsLength = F.sum . fmap toLen
 -- | Converts a nested 'Seq' of 'Rod' to a nested 'Seq' of 'Chunk' in
 -- preparation for rendering.  Newlines are added to the end of each
 -- line.
-chunksFromRods :: Seq (Seq Rod) -> Seq (Seq Chunk)
-chunksFromRods = fmap (|> "\n") . fmap (fmap chunkFromRod)
+chunksFromRods :: RodRows -> Seq (Seq Chunk)
+chunksFromRods (RodRows rr) = fmap (|> "\n") . fmap (fmap chunkFromRod) $ rr
   where
     chunkFromRod (Rod ei) = case ei of
       Left (i, r) -> (chunkFromText . X.replicate i $ " ") <> back r
@@ -156,7 +155,7 @@ bottom = NonCenter ABottom
 -- # Orientation
 
 class Orientation a where
-  rods :: Box a -> Seq (Seq Rod)
+  rodRows :: Box a -> RodRows
 
   spacer :: Radiant -> Int -> Box a
   -- ^ Builds a one-dimensional box of the given size; its single
@@ -171,7 +170,7 @@ class Orientation a where
   -- a 'Box' 'Vertical' wider or a 'Box' 'Horizontal' taller.
 
 instance Orientation Vertical where
-  rods bx@(Box sqnce) = mergeHoriz $ fmap eqlize sqnce
+  rodRows bx@(Box sqnce) = RodRows . mergeHoriz $ fmap eqlize sqnce
     where
       mergeHoriz = F.foldl' (<>) Seq.empty
       eqlize (Payload a rd ei) = fmap addLeftRight this
@@ -202,7 +201,7 @@ instance Orientation Vertical where
       (Height 0, Width (max 0 i)))
 
 instance Orientation Horizontal where
-  rods bx@(Box sqnce) = mergeVert $ fmap eqlize sqnce
+  rodRows bx@(Box sqnce) = RodRows . mergeVert $ fmap eqlize sqnce
     where
       maxTop = above bx
       maxBot = below bx
@@ -314,13 +313,27 @@ blank
 blank a r h w =
   Box . Seq.singleton . Payload a r . Right . Core . Right $ (h, w)
 
+-- | Wrap a 'Box' in another 'Box'.  Useful for changing a
+-- 'Horizontal' 'Box' to a 'Vertical' one, or simply for putting a
+-- 'Box' inside another one to control size and background color.
+wrap
+  :: Orientation a
+  => Alignment b
+  -- ^ Alignment for new 'Box'.  This also determines whether the new
+  -- 'Box' is 'Horizontal' or 'Vertical'.
+  -> Radiant
+  -- ^ Background color for new box
+  -> Box a
+  -> Box b
+wrap a r = Box . Seq.singleton . Payload a r . Left . rodRows
+
 -- # Box rendering
 
 -- | Convert a box to a 'Seq' of 'Chunk' in preparation for rendering.
 -- Use 'F.toList' to convert the 'Seq' of 'Chunk' to a list so that
 -- you can print it using the functions in "Rainbow".
 render :: Orientation a => Box a -> Seq Chunk
-render = join . chunksFromRods . rods
+render = join . chunksFromRods . rodRows
 
 
 -- # Tables
@@ -335,7 +348,7 @@ data Cell = Cell
 emptyCell :: Cell
 emptyCell = Cell Seq.empty center center noColorRadiant
 
-{-
+
 -- Cells by row:
 -- 0. Ensure each row is equal length
 -- 1. Create one BoxV for each cell
@@ -347,7 +360,7 @@ emptyCell = Cell Seq.empty center center noColorRadiant
 --    and center alignment
 -- 7. mconcatSeq the rows
 
-tableByRows :: Seq (Seq Cell) -> BoxV
+tableByRows :: Seq (Seq Cell) -> Box Vertical
 tableByRows
   = mconcatSeq
   . fmap rowToBoxV
@@ -358,33 +371,33 @@ tableByRows
   . fmap (fmap cellToBoxV)
   . equalize emptyCell
 
-rowToBoxV :: BoxH -> BoxV
-rowToBoxV bv = convert left noColorRadiant bv
+rowToBoxV :: Box Horizontal -> Box Vertical
+rowToBoxV = wrap center noColorRadiant
 
-cellToBoxV :: Cell -> (BoxV, Align Horiz, Radiant)
+cellToBoxV :: Cell -> (Box Vertical, Alignment Horizontal, Radiant)
 cellToBoxV (Cell rs ah av rd) = (bx, ah, rd)
   where
     bx = mconcatSeq
-       . fmap (convert av rd)
+       . fmap (wrap av rd)
        . fmap (mconcatSeq . fmap (fromChunk top rd))
        $ rs
 
 toBoxH
-  :: (BoxV, Align Horiz, Radiant)
-  -> BoxH
-toBoxH (bv, ah, rd) = convert ah rd bv
+  :: (Box Vertical, Alignment Horizontal, Radiant)
+  -> Box Horizontal
+toBoxH (bv, ah, rd) = wrap ah rd bv
 
 addWidthMap
-  :: Seq (Seq (BoxV, b, c))
-  -> (M.Map Int (Int, Int), Seq (Seq (BoxV, b, c)))
+  :: Seq (Seq (Box Vertical, b, c))
+  -> (M.Map Int (Int, Int), Seq (Seq (Box Vertical, b, c)))
 addWidthMap sqnce = (m, sqnce)
   where
     m = widestCellMap . fmap (fmap (\(a, _, _) -> a)) $ sqnce
 
 padBoxV
   :: M.Map Int (Int, Int)
-  -> Seq (Seq (BoxV, a, b))
-  -> Seq (Seq (BoxV, a, b))
+  -> Seq (Seq (Box Vertical, a, b))
+  -> Seq (Seq (Box Vertical, a, b))
 padBoxV mp = fmap (Seq.mapWithIndex f)
   where
     f idx (bx, a, b) = (bx <> padLeft <> padRight, a, b)
@@ -394,7 +407,7 @@ padBoxV mp = fmap (Seq.mapWithIndex f)
         padRight = spreader left lenR
 
 
-widestCellMap :: Seq (Seq BoxV) -> M.Map Int (Int, Int)
+widestCellMap :: Seq (Seq (Box Vertical)) -> M.Map Int (Int, Int)
 widestCellMap = F.foldl' outer M.empty
   where
     outer mpOuter = Seq.foldlWithIndex inner mpOuter
@@ -415,7 +428,7 @@ widestCellMap = F.foldl' outer M.empty
 -- 6.  Convert each column to BoxH
 -- 7.  mconcatSeq the columns
 
-tableByColumns :: Seq (Seq Cell) -> BoxH
+tableByColumns :: Seq (Seq Cell) -> Box Horizontal
 tableByColumns
   = mconcatSeq
   . fmap rowToBoxH
@@ -427,27 +440,27 @@ tableByColumns
   . equalize emptyCell
 
 
-rowToBoxH :: BoxV -> BoxH
-rowToBoxH bv = convert top noColorRadiant bv
+rowToBoxH :: Box Vertical -> Box Horizontal
+rowToBoxH = wrap top noColorRadiant
 
 
-cellToBoxH :: Cell -> (BoxH, Align Vert, Radiant)
+cellToBoxH :: Cell -> (Box Horizontal, Alignment Vertical, Radiant)
 cellToBoxH (Cell rs ah av rd) = (bx, av, rd)
   where
-    bx = convert ah rd
+    bx = wrap ah rd
        . mconcatSeq
-       . fmap (convert av rd)
+       . fmap (wrap av rd)
        . fmap (mconcatSeq . fmap (fromChunk top rd))
        $ rs
 
 addHeightMap
-  :: Seq (Seq (BoxH, b, c))
-  -> (M.Map Int (Int, Int), Seq (Seq (BoxH, b, c)))
+  :: Seq (Seq (Box Horizontal, b, c))
+  -> (M.Map Int (Int, Int), Seq (Seq (Box Horizontal, b, c)))
 addHeightMap sqnce = (m, sqnce)
   where
     m = tallestCellMap . fmap (fmap (\(a, _, _) -> a)) $ sqnce
 
-tallestCellMap :: Seq (Seq BoxH) -> M.Map Int (Int, Int)
+tallestCellMap :: Seq (Seq (Box Horizontal)) -> M.Map Int (Int, Int)
 tallestCellMap = F.foldl' outer M.empty
   where
     outer mpOuter = Seq.foldlWithIndex inner mpOuter
@@ -460,8 +473,8 @@ tallestCellMap = F.foldl' outer M.empty
 
 padBoxH
   :: M.Map Int (Int, Int)
-  -> Seq (Seq (BoxH, a, b))
-  -> Seq (Seq (BoxH, a, b))
+  -> Seq (Seq (Box Horizontal, a, b))
+  -> Seq (Seq (Box Horizontal, a, b))
 padBoxH mp = fmap (Seq.mapWithIndex f)
   where
     f idx (bx, a, b) = (bx <> padTop <> padBot, a, b)
@@ -472,9 +485,9 @@ padBoxH mp = fmap (Seq.mapWithIndex f)
 
 
 toBoxV
-  :: (BoxH, Align Vert, Radiant)
-  -> BoxV
-toBoxV (bh, av, rd) = convert av rd bh
+  :: (Box Horizontal, Alignment Vertical, Radiant)
+  -> Box Vertical
+toBoxV (bh, av, rd) = wrap av rd bh
 
 
 -- | Ensures that each inner 'Seq' is the same length by adding the
@@ -489,7 +502,7 @@ equalize emp sqnce = fmap adder sqnce
 
 mconcatSeq :: Monoid a => Seq a -> a
 mconcatSeq = F.foldl' (<>) mempty
--}
+
 
 -- # Utilities
 
