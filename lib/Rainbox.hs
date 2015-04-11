@@ -17,7 +17,7 @@ module Rainbox
     , spacer )
 
   -- * Boxes
-  , Box
+  , Roddable
   , BoxH
   , BoxV
 
