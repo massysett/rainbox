@@ -1,5 +1,8 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# OPTIONS_HADDOCK not-home #-}
+-- | Contains the innards of 'Rainbox'.  You probably won't need
+-- anything in here, but nothing will break if you use what's here.
 module Rainbox.Core where
 
 import Rainbow
@@ -14,7 +17,7 @@ import qualified Data.Map as M
 
 -- # Alignment
 
--- | Alignment.  Used in conjunction with 'Horiztonal' and 'Vertical',
+-- | Alignment.  Used in conjunction with 'Horizontal' and 'Vertical',
 -- this determines how a payload aligns with the axis of a 'Box'.
 data Alignment a = Center | NonCenter a
   deriving (Eq, Ord, Show)
@@ -33,6 +36,14 @@ data Vertical = ALeft | ARight
 -- horizontal axis.
 center :: Alignment a
 center = Center
+
+-- | Center horizontally; like 'center', but monomorphic.
+centerH :: Alignment Horizontal
+centerH = center
+
+-- | Center vertically; like 'center', but monomorphic.
+centerV :: Alignment Vertical
+centerV = center
 
 -- | Place this payload's left edge on the vertical axis.
 left :: Alignment Vertical
@@ -162,7 +173,10 @@ instance HasHeight (Payload a) where
 -- the orientation of the entire 'Box'.
 --
 -- A 'Box' is a 'Monoid' so you can combine them using the usual
--- monoid functions.
+-- monoid functions.  For a 'Box' 'Vertical', the leftmost values
+-- added with 'mappend' are at the top of the 'Box'; for a 'Box'
+-- 'Horizontal', the leftmost values added with 'mappend' are on the
+-- left side of the 'Box'.
 newtype Box a = Box (Seq (Payload a))
   deriving (Eq, Ord, Show)
 
@@ -174,7 +188,7 @@ instance Monoid (Box a) where
 
 -- | This typeclass is responsible for transforming a 'Box' into
 -- Rainbow 'Chunk' so they can be printed to your screen.  This
--- requires adding appropriate whitespace with the rigt colors, as
+-- requires adding appropriate whitespace with the right colors, as
 -- well as adding newlines in the right places.
 class Orientation a where
   rodRows :: Box a -> RodRows
@@ -377,6 +391,13 @@ data Cell = Cell
   -- of necessary padding that will be added so that the cells make a
   -- uniform table.
   }
+
+-- | Creates a blank 'Cell' with the given background color and width;
+-- useful for adding separators between columns.
+separator :: Radiant -> Int -> Cell
+separator rd i = Cell (Seq.singleton (Seq.singleton ck)) top left rd
+  where
+    ck = (chunkFromText $ X.replicate (max 0 i) " ") <> back rd
 
 emptyCell :: Cell
 emptyCell = Cell Seq.empty center center noColorRadiant
