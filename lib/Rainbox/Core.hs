@@ -14,17 +14,50 @@ import qualified Data.Map as M
 
 -- # Alignment
 
--- | Alignment.
+-- | Alignment.  Used in conjunction with 'Horiztonal' and 'Vertical',
+-- this determines how a payload aligns with the axis of a 'Box'.
 data Alignment a = Center | NonCenter a
-  deriving (Eq, Show)
+  deriving (Eq, Ord, Show)
+
+-- # Horizontal and vertical
+
+-- | Determines how a payload aligns with a horizontal axis.
+data Horizontal = ATop | ABottom
+  deriving (Eq, Ord, Show)
+
+-- | Determines how a payload aligns with a vertical axis.
+data Vertical = ALeft | ARight
+  deriving (Eq, Ord, Show)
+
+-- | Place this payload so that it is centered on the vertical axis or
+-- horizontal axis.
+center :: Alignment a
+center = Center
+
+-- | Place this payload's left edge on the vertical axis.
+left :: Alignment Vertical
+left = NonCenter ALeft
+
+-- | Place this payload's right edge on the vertical axis.
+right :: Alignment Vertical
+right = NonCenter ARight
+
+-- | Place this payload's top edge on the horizontal axis.
+top :: Alignment Horizontal
+top = NonCenter ATop
+
+-- | Place this payload's bottom edge on the horizontal axis.
+bottom :: Alignment Horizontal
+bottom = NonCenter ABottom
+
 
 -- # Width and height
 
--- | A count of rows
+-- | A count of rows.
 newtype Height = Height Int
   deriving (Eq, Ord, Show)
 
--- | A count of columns
+-- | A count of columns.
 newtype Width = Width Int
   deriving (Eq, Ord, Show)
 
@@ -45,9 +78,10 @@ instance (HasWidth a, HasWidth b) => HasWidth (Either a b) where
 
 -- # Core
 
--- | The core of a block is either a text 'Chunk' or, if the box is
--- blank, is merely a height and a width.
+-- | A 'Core' is either a single 'Chunk' or, if the box is blank, is
+-- merely a height and a width.
 newtype Core = Core (Either Chunk (Height, Width))
+  deriving (Eq, Ord, Show)
 
 instance HasWidth Core where
   width (Core ei) = case ei of
@@ -62,22 +96,15 @@ instance HasHeight Core where
 -- # Rods
 
 -- | An intermediate type used in rendering; it consists either of
--- text 'Chunk' or of a number of spaces.
+-- text 'Chunk' or of a number of spaces coupled with a background color.
 newtype Rod = Rod (Either (Int, Radiant) Chunk)
+  deriving (Eq, Ord, Show)
 
 -- | Convert a 'Core' to a 'Seq' of 'Rod' for rendering.
 rodsFromCore :: Radiant -> Core -> Seq Rod
 rodsFromCore rd (Core ei) = case ei of
   Left ck -> Seq.singleton . Rod . Right $ ck
   Right (Height h, Width w) -> Seq.replicate h . Rod . Left $ (w, rd)
-
--- | How many screen columns does this 'Seq' of 'Rod' occupy?
-rodsLength :: Seq Rod -> Int
-rodsLength = F.sum . fmap toLen
-  where
-    toLen (Rod ei) = case ei of
-      Left (i, _) -> i
-      Right (Chunk _ xs) -> F.sum . fmap X.length $ xs
 
 -- | Converts a nested 'Seq' of 'Rod' to a nested 'Seq' of 'Chunk' in
 -- preparation for rendering.  Newlines are added to the end of each
@@ -96,7 +123,9 @@ instance HasWidth Rod where
 
 -- # RodRows
 
+-- | A list of screen rows; each screen row is a 'Seq' of 'Rod'.
 newtype RodRows = RodRows (Seq (Seq Rod))
+  deriving (Eq, Ord, Show)
 
 instance HasHeight RodRows where
   height (RodRows sq) = Seq.length sq
@@ -106,7 +135,18 @@ instance HasWidth RodRows where
 
 -- # Payload
 
+-- | Conceptually, a 'Payload' is either a 'Core' or is a wrapper
+-- around an entire 'Box'.  If the 'Payload' is a wrapper around an
+-- entire 'Box', the 'Box' is first converted to 'RodRows' for storage
+-- in the 'Payload'.  The 'Payload' also has an 'Alignment', which
+-- specifies how the payload aligns with the axis.  Whether the
+-- 'Alignment' is 'Horizontal' or 'Vertical' determines the
+-- orientation of the 'Payload'.  The 'Payload' also contains a
+-- background color, which is type 'Radiant'.  The background color
+-- extends continuously from the 'Payload' in both directions that are
+-- perpendicular to the axis.
 data Payload a = Payload (Alignment a) Radiant (Either RodRows Core)
+  deriving (Eq, Ord, Show)
 
 instance HasWidth (Payload a) where
   width (Payload _ _ ei) = width ei
@@ -116,50 +156,32 @@ instance HasHeight (Payload a) where
 
 -- # Box
 
+-- | A 'Box' is the central building block.  It consists of zero or
+-- more payloads; each payload has the same orientation, which is either
+-- 'Horizontal' or 'Vertical'.  This orientation also determines
+-- the orientation of the entire 'Box'.
+--
+-- A 'Box' is a 'Monoid' so you can combine them using the usual
+-- monoid functions.
 newtype Box a = Box (Seq (Payload a))
+  deriving (Eq, Ord, Show)
 
 instance Monoid (Box a) where
   mempty = Box Seq.empty
   mappend (Box x) (Box y) = Box (x <> y)
 
--- # Horizontal and vertical
-
-data Horizontal = ATop | ABottom
-  deriving (Eq, Show)
-
-data Vertical = ALeft | ARight
-  deriving (Eq, Show)
-
--- | Place this block so that it is centered on the vertical axis or
--- horizontal axis.
-center :: Alignment a
-center = Center
-
--- | Place this block's left edge on the vertical axis.
-left :: Alignment Vertical
-left = NonCenter ALeft
-
--- | Place this block's right edge on the vertical axis.
-right :: Alignment Vertical
-right = NonCenter ARight
-
--- | Place this box's top edge on the horizontal axis.
-top :: Alignment Horizontal
-top = NonCenter ATop
-
--- | Place this box's bottom edge on the horizontal axis.
-bottom :: Alignment Horizontal
-bottom = NonCenter ABottom
-
-
 -- # Orientation
 
+-- | This typeclass is responsible for transforming a 'Box' into
+-- Rainbow 'Chunk' so they can be printed to your screen.  This
+-- requires adding appropriate whitespace with the rigt colors, as
+-- well as adding newlines in the right places.
 class Orientation a where
   rodRows :: Box a -> RodRows
 
   spacer :: Radiant -> Int -> Box a
   -- ^ Builds a one-dimensional box of the given size; its single
-  -- dimension is on the same alignment as the axis.  When added to a
+  -- dimension is parallel to the axis.  When added to a
   -- box, it will insert blank space of the given length.  For a 'Box'
   -- 'Horizontal', this produces a horizontal line; for a 'Box'
   -- 'Vertical', a vertical line.
@@ -179,7 +201,7 @@ instance Orientation Vertical where
             (fmap Seq.singleton $ rodsFromCore rd) ei
           addLeftRight lin = padder lenLft <> lin <> padder lenRgt
             where
-              lenLin = rodsLength lin
+              lenLin = F.sum . fmap width $ lin
               lenLft = case a of
                 Center -> port bx - (fst . split $ lenLin)
                 NonCenter ALeft -> 0
@@ -338,11 +360,22 @@ render = join . chunksFromRods . rodRows
 
 -- # Tables
 
+-- | A single cell in a spreadsheet-like grid.
 data Cell = Cell
   { cellRows :: Seq (Seq Chunk)
+  -- ^ The cell can have multiple rows of text; there is one 'Seq' for
+  -- each row of text.
   , cellHoriz :: Alignment Horizontal
+  -- ^ How this 'Cell' should align compared to other 'Cell' in its
+  -- row.
   , cellVert :: Alignment Vertical
+  -- ^ How this 'Cell' should align compared to other 'Cell' in its column.
   , cellBackground :: Radiant
+  -- ^ Background color for this cell.  The background in the
+  -- individual 'Chunk' in the 'cellRows' are not affected by
+  -- 'cellBackground'; instead, 'cellBackground' determines the color
+  -- of necessary padding that will be added so that the cells make a
+  -- uniform table.
   }
 
 emptyCell :: Cell
@@ -360,6 +393,10 @@ emptyCell = Cell Seq.empty center center noColorRadiant
 --    and center alignment
 -- 7. mconcatSeq the rows
 
+-- | Create a table where each inner 'Seq' is a row of cells,
+-- from left to right.  If necessary, blank cells are added to the end
+-- of a row to ensure that each row has the same number of cells as
+-- the longest row.
 tableByRows :: Seq (Seq Cell) -> Box Vertical
 tableByRows
   = mconcatSeq
@@ -428,6 +465,10 @@ widestCellMap = F.foldl' outer M.empty
 -- 6.  Convert each column to BoxH
 -- 7.  mconcatSeq the columns
 
+-- | Create a table where each inner 'Seq' is a column of cells,
+-- from top to bottom.  If necessary, blank cells are added to the end
+-- of a column to ensure that each column has the same number of cells
+-- as the longest column.
 tableByColumns :: Seq (Seq Cell) -> Box Horizontal
 tableByColumns
   = mconcatSeq

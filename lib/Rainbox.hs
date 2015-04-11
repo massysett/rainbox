@@ -1,29 +1,20 @@
 module Rainbox
-  ( -- * Alignment
-    Align
-  , Vert
-  , Horiz
+  ( -- * Alignment and Boxes
+    Alignment
+  , Horizontal
+  , Vertical
   , center
   , left
   , right
   , top
   , bottom
-  , Alignment
-    ( BuiltBox
-    , Opposite
-    , convert
-    , wrap
-    , spreader
-    , spacer )
+  , Box
+  , Orientation ( spacer, spreader )
 
-  -- * Boxes
-  , Roddable
-  , BoxH
-  , BoxV
-
-  -- * Box and block construction
+  -- * Box construction
   , fromChunk
   , blank
+  , wrap
 
   -- * Rendering
   , render
