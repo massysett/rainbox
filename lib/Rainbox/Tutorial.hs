@@ -329,6 +329,9 @@ module Rainbox.Tutorial where
 import Data.Foldable (toList)
 import Data.Monoid
 import Data.Sequence (Seq)
+import qualified Data.Sequence as Seq
+import Data.Text (Text)
+import qualified Data.Text as X
 import Rainbow
 import Rainbox
 
@@ -432,11 +435,70 @@ data Line
   deriving (Eq, Ord, Show, Enum)
 
 data Station = Station
-  { name :: String
+  { name :: Text
   , metroLines :: [Line]
-  , address :: [String]
+  , address :: [Text]
   , underground :: Bool
   }
+
+nameCell :: Radiant -> Text -> Cell
+nameCell bk nm
+  = Cell (Seq.singleton . Seq.singleton $ (chunkFromText nm <> back bk))
+         top left bk
+
+linesCell :: Radiant -> [Line] -> Cell
+linesCell bk lns = Cell (Seq.fromList . fmap (lineRow bk) $ lns)
+                        top right bk
+
+lineRow :: Radiant -> Line -> Seq Chunk
+lineRow bk li = Seq.singleton ck
+  where
+    ck = chunkFromText (X.pack . show $ li) <> fore clr <> back bk
+    clr = case li of
+      Red -> red
+      Blue -> blue
+      Orange -> Radiant yellow8 (Just . Color256 . Just $ 220)
+      Green -> green
+      Yellow -> yellow
+      Silver -> Radiant white8 (Just grey)
+
+
+addressCell :: Radiant -> [Text] -> Cell
+addressCell bk lns = Cell (Seq.fromList . fmap addrRow $ lns) top center bk
+  where
+    addrRow txt = Seq.singleton $ chunkFromText txt <> back bk
+
+undergroundCell :: Radiant -> Bool -> Cell
+undergroundCell bk bl
+  = Cell (Seq.singleton . Seq.singleton $ ck) top left bk
+  where
+    ck = (if bl then "Yes" else "No") <> back bk
+
+-- | Converts a 'Station' to a list of 'Cell'.
+
+stationCells :: Radiant -> Station -> [Cell]
+stationCells b st =
+  [ nameCell b . name $ st
+  , linesCell b . metroLines $ st
+  , addressCell b . address $ st
+  , undergroundCell b . underground $ st
+  ]
+
+stationTable :: Box Vertical
+stationTable
+  = tableByRows
+  . Seq.fromList
+  . zipWith stationRow (cycle [coloredBack, noColorRadiant])
+  $ stations
+  where
+    coloredBack = Radiant noColor8 (Just . Color256 . Just $ 195)
+    stationRow bk
+      = intersperse (separator bk 1)
+      . Seq.fromList
+      . stationCells bk
+
+renderStationTable :: IO ()
+renderStationTable = mapM_ putChunk . toList . render $ stationTable
 
 stations :: [Station]
 stations =
@@ -447,7 +509,7 @@ stations =
             ["600 Maryland Ave SW", "Washington, DC 20024"] True
 
   , Station "Silver Spring" [Red]
-            ["8400 Colesville Rd, Silver Spring, MD 20910"] False
+            ["8400 Colesville Rd", "Silver Spring, MD 20910"] False
 
   , Station "Court House" [Silver, Orange]
             ["2100 Wilson Blvd", "Arlington, VA 22201"] True
