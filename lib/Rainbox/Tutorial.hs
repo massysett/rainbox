@@ -416,3 +416,42 @@ box5 = box2 <> spreader center 12
 
 renderBox5 :: IO ()
 renderBox5 = mapM_ putChunk . toList . render $ box5
+
+-- Sample code for 'tableByRows'
+--
+-- Here is a simple data type representing stations in the
+-- Washington DC Metrorail system.
+
+data Line
+  = Red
+  | Blue
+  | Orange
+  | Green
+  | Yellow
+  | Silver
+  deriving (Eq, Ord, Show, Enum)
+
+data Station = Station
+  { name :: String
+  , metroLines :: [Line]
+  , address :: [String]
+  , underground :: Bool
+  }
+
+stations :: [Station]
+stations =
+  [ Station "Metro Center" [Red, Orange, Silver, Blue]
+            ["607 13th St NW", "Washington, DC 20005"] True
+
+  , Station "L'Enfant Plaza" [Orange, Silver, Blue, Green, Yellow]
+            ["600 Maryland Ave SW", "Washington, DC 20024"] True
+
+  , Station "Silver Spring" [Red]
+            ["8400 Colesville Rd, Silver Spring, MD 20910"] False
+
+  , Station "Court House" [Silver, Orange]
+            ["2100 Wilson Blvd", "Arlington, VA 22201"] True
+
+  , Station "Prince George's Plaza" [Green, Yellow]
+            ["3575 East-West Hwy", "Hyattsville, MD 20782"] True
+  ]
