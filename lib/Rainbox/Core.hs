@@ -1,8 +1,9 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_HADDOCK not-home #-}
--- | Contains the innards of 'Rainbox'.  You probably won't need
--- anything in here, but nothing will break if you use what's here.
+-- | Contains the innards of 'Rainbox'.  You shouldn't need anything
+-- in here.  Some functions here are partial or have undefined results
+-- if their inputs don't respect particular invariants.
 module Rainbox.Core where
 
 import Rainbow
@@ -124,43 +125,63 @@ instance HasWidth Rod where
 -- # RodRows
 
 -- | A list of screen rows; each screen row is a 'Seq' of 'Rod'.
-newtype RodRows = RodRows (Seq (Seq Rod))
+--
+-- A 'RodRows' with width but no height does nothing if rendered
+-- alone, but it can affect the width of other 'RodRows' if combined
+-- with them.
+data RodRows
+  = RodRowsWithHeight (Seq (Seq Rod))
+  -- ^ Each outer 'Seq' represents a single screen row.  Each 'Seq'
+  -- has a height of 1.  If the 'Seq' is empty, the 'RodRows' has no
+  -- width and no height.
+  | RodRowsNoHeight Int
+  -- ^ A 'RodRows' that has no height.  If the 'Int' is less than 1,
+  -- the 'RodRows' has no width and no height.  Otherwise, the
+  -- 'RodRows' has no height but has the given width.
   deriving (Eq, Ord, Show)
 
 instance HasHeight RodRows where
-  height (RodRows sq) = Seq.length sq
+  height (RodRowsWithHeight sq) = Seq.length sq
+  height (RodRowsNoHeight _) = 0
 
 instance HasWidth RodRows where
-  width (RodRows sq) = F.foldl' max 0 . fmap (F.sum . fmap width) $ sq
+  width (RodRowsWithHeight sq) = F.foldl' max 0 . fmap (F.sum . fmap width) $ sq
+  width (RodRowsNoHeight i) = max 0 i
 
 -- | Convert a 'Core' to a 'Seq' of 'Rod' for rendering.
-rodsFromCore :: Radiant -> Core -> Seq Rod
-rodsFromCore rd (Core ei) = case ei of
-  Left ck -> Seq.singleton . Rod . Right $ ck
-  Right (Height h, Width w) -> Seq.replicate h . Rod . Left $ (w, rd)
+rodRowsFromCore :: Radiant -> Core -> RodRows
+rodRowsFromCore bk (Core ei) = case ei of
+  Left ck -> RodRowsWithHeight . Seq.singleton
+    . Seq.singleton . Rod . Right $ ck
+  Right (Height h, Width w)
+    | h < 1  -> RodRowsNoHeight w
+    | otherwise -> RodRowsWithHeight . Seq.replicate h . Seq.singleton
+        . Rod . Left $ (w, bk)
 
 -- | Converts a nested 'Seq' of 'Rod' to a nested 'Seq' of 'Chunk' in
 -- preparation for rendering.  Newlines are added to the end of each
 -- line.
-chunksFromRods :: RodRows -> Seq (Seq Chunk)
-chunksFromRods (RodRows rr) = fmap (|> "\n") . fmap (fmap chunkFromRod) $ rr
-  where
-    chunkFromRod (Rod ei) = case ei of
-      Left (i, r) -> (chunkFromText . X.replicate i $ " ") <> back r
-      Right c -> c
+chunksFromRodRows :: RodRows -> Seq (Seq Chunk)
+chunksFromRodRows rr = case rr of
+  RodRowsWithHeight sq -> fmap (|> "\n") . fmap (fmap chunkFromRod) $ sq
+    where
+      chunkFromRod (Rod ei) = case ei of
+        Left (i, r) -> (chunkFromText . X.replicate i $ " ") <> back r
+        Right c -> c
+  RodRowsNoHeight _ -> Seq.empty
+
 
 -- # Payload
 
--- | Conceptually, a 'Payload' is either a 'Core' or is a wrapper
--- around an entire 'Box'.  If the 'Payload' is a wrapper around an
--- entire 'Box', the 'Box' is first converted to 'RodRows' for storage
--- in the 'Payload'.  The 'Payload' also has an 'Alignment', which
--- specifies how the payload aligns with the axis.  Whether the
--- 'Alignment' is 'Horizontal' or 'Vertical' determines the
--- orientation of the 'Payload'.  The 'Payload' also contains a
+-- | A 'Payload' holds a 'RodRows', which determines the number
+-- and content of the screen rows.  The 'Payload' also has an
+-- 'Alignment', which specifies how the payload aligns with the axis.
+-- Whether the 'Alignment' is 'Horizontal' or 'Vertical' determines
+-- the orientation of the 'Payload'.  The 'Payload' also contains a
 -- background color, which is type 'Radiant'.  The background color
 -- extends continuously from the 'Payload' in both directions that are
 -- perpendicular to the axis.
+
 data Payload a = Payload (Alignment a) Radiant (Either RodRows Core)
   deriving (Eq, Ord, Show)
 
@@ -169,6 +190,107 @@ instance HasWidth (Payload a) where
 
 instance HasHeight (Payload a) where
   height (Payload _ _ ei) = height ei
+
+-- # Padding and merging
+
+-- | Adds padding to the top and bottom of each Payload.  A Payload
+-- with a Core is converted to a RodRows and has padding added; a
+-- Payload with a RodRows has necessary padding added to the top and
+-- bottom.  The number of elements in the resulting Seq is the same as
+-- the number of elements in the input Seq; no merging is performed.
+
+addVerticalPadding
+  :: Box Horizontal
+  -> Seq RodRows
+addVerticalPadding bx@(Box sqnce) = fmap eqlize sqnce
+  where
+    maxTop = above bx
+    maxBot = below bx
+    eqlize bhp@(Payload _ rd ei) = case ei of
+      Left rr -> eqlzeRodRows rr
+      Right cre -> eqlzeRodRows (rodRowsFromCore rd cre)
+      where
+        eqlzeRodRows rr = case rr of
+          RodRowsWithHeight sq -> RodRowsWithHeight $ tp w <> sq <> bot w
+          RodRowsNoHeight i
+            | maxTop + maxBot == 0 -> RodRowsNoHeight i
+            | otherwise -> RodRowsWithHeight $ tp w <> bot w
+          where
+            w = width rr
+        tp w = Seq.replicate (max 0 (maxTop - above bhp)) (pad w)
+        bot w = Seq.replicate (max 0 (maxBot - below bhp)) (pad w)
+        pad w = Seq.singleton . Rod . Left $ (w, rd)
+
+-- | Merges multiple horizontal RodRows into a single RodRows.  All
+-- RodRows must already have been the same height; if they are not the
+-- same height, undefined behavior occurs.
+
+horizontalMerge :: Seq RodRows -> RodRows
+horizontalMerge sqn = case viewl sqn of
+  EmptyL -> RodRowsNoHeight 0
+  x :< xs -> case x of
+    RodRowsNoHeight i -> RodRowsNoHeight $ F.foldl' comb i xs
+      where
+        comb acc x' = case x' of
+          RodRowsNoHeight i' -> acc + i'
+          RodRowsWithHeight _ -> error "horizontalMerge: error 1"
+    RodRowsWithHeight sq -> RodRowsWithHeight $ F.foldl' comb sq xs
+      where
+        comb acc rr = case rr of
+          RodRowsWithHeight sq' -> Seq.zipWith (<>) acc sq'
+          RodRowsNoHeight _ -> error "horizontalMerge: error 2"
+
+-- | Adds padding to the left and right of each Payload.
+-- A Payload with a Core is converted to a RodRows and has padding
+-- added; a Payload with a RodRows has necessary padding added to the
+-- left and right.  The number of elements in the resulting Seq is
+-- the same as the number of elements in the input Seq; no merging is
+-- performed.
+
+addHorizontalPadding
+  :: Box Vertical
+  -> Seq RodRows
+addHorizontalPadding bx@(Box sqnce) = fmap eqlize sqnce
+  where
+    maxLeft = port bx
+    maxRight = starboard bx
+    eqlize (Payload a rd ei) = case ei of
+      Left rr -> addLeftRight rr
+      Right cre -> addLeftRight $ rodRowsFromCore rd cre
+      where
+        addLeftRight (RodRowsNoHeight _) = RodRowsNoHeight $ maxLeft + maxRight
+        addLeftRight (RodRowsWithHeight sq) = RodRowsWithHeight $
+          fmap addLeftRightToLine sq
+        addLeftRightToLine lin = padder lenLft <> lin <> padder lenRgt
+          where
+            lenLin = F.sum . fmap width $ lin
+            lenLft = case a of
+              Center -> maxLeft - (fst . split $ lenLin)
+              NonCenter ALeft -> 0
+              NonCenter ARight -> maxLeft - lenLin
+            lenRgt = case a of
+              Center -> maxRight - (snd . split $ lenLin)
+              NonCenter ALeft -> maxRight - lenLin
+              NonCenter ARight -> 0
+            padder len
+              | len < 1 = Seq.empty
+              | otherwise = Seq.singleton . Rod . Left $ (len, rd)
+
+
+-- | Merge multiple vertical RodRows into a single RodRows.  Each
+-- RodRows should already be the same width.
+
+verticalMerge :: Seq RodRows -> RodRows
+verticalMerge sqnce = case viewl sqnce of
+  EmptyL -> RodRowsNoHeight 0
+  x :< xs -> F.foldl' comb x xs
+    where
+      comb acc rr = case (acc, rr) of
+        (RodRowsNoHeight w, RodRowsNoHeight _) -> RodRowsNoHeight w
+        (RodRowsNoHeight _, RodRowsWithHeight sq) -> RodRowsWithHeight sq
+        (RodRowsWithHeight sq, RodRowsNoHeight _) -> RodRowsWithHeight sq
+        (RodRowsWithHeight sq1, RodRowsWithHeight sq2) ->
+          RodRowsWithHeight $ sq1 <> sq2
 
 -- # Box
 
@@ -211,28 +333,7 @@ class Orientation a where
   -- a 'Box' 'Vertical' wider or a 'Box' 'Horizontal' taller.
 
 instance Orientation Vertical where
-  rodRows bx@(Box sqnce) = RodRows . mergeHoriz $ fmap eqlize sqnce
-    where
-      mergeHoriz = F.foldl' (<>) Seq.empty
-      eqlize (Payload a rd ei) = fmap addLeftRight this
-        where
-          this = either (\(RodRows sq) -> sq)
-            (fmap Seq.singleton $ rodsFromCore rd) ei
-          addLeftRight lin = padder lenLft <> lin <> padder lenRgt
-            where
-              lenLin = F.sum . fmap width $ lin
-              lenLft = case a of
-                Center -> port bx - (fst . split $ lenLin)
-                NonCenter ALeft -> 0
-                NonCenter ARight -> port bx - lenLin
-              lenRgt = case a of
-                Center -> starboard bx - (snd . split $ lenLin)
-                NonCenter ALeft -> starboard bx - lenLin
-                NonCenter ARight -> 0
-              padder len
-                | len < 1 = Seq.empty
-                | otherwise = Seq.singleton . Rod . Left
-                      $ (len, rd)
+  rodRows = verticalMerge . addHorizontalPadding
 
   spacer r i = Box . Seq.singleton $
     Payload (NonCenter ALeft) r (Right . Core . Right $
@@ -242,23 +343,7 @@ instance Orientation Vertical where
       (Height 0, Width (max 0 i)))
 
 instance Orientation Horizontal where
-  rodRows bx@(Box sqnce) = RodRows . mergeVert $ fmap eqlize sqnce
-    where
-      maxTop = above bx
-      maxBot = below bx
-      w = width bx
-      mergeVert sqn = case viewl sqn of
-        EmptyL -> Seq.empty
-        x :< xs -> F.foldl' comb x xs
-        where
-          comb acc sq = Seq.zipWith (<>) acc sq
-      eqlize bhp@(Payload _ rd ei) = tp <> this <> bot
-        where
-          this = either (\(RodRows sq) -> sq)
-            (fmap Seq.singleton $ rodsFromCore rd) ei
-          tp = Seq.replicate (max 0 (maxTop - above bhp)) pad
-          bot = Seq.replicate (max 0 (maxBot - below bhp)) pad
-          pad = Seq.singleton . Rod . Left $ (w, rd)
+  rodRows = horizontalMerge . addVerticalPadding
 
   spacer r i = Box . Seq.singleton $
     Payload (NonCenter ATop) r (Right . Core . Right $
@@ -374,7 +459,7 @@ wrap a r = Box . Seq.singleton . Payload a r . Left . rodRows
 -- Use 'F.toList' to convert the 'Seq' of 'Chunk' to a list so that
 -- you can print it using the functions in "Rainbow".
 render :: Orientation a => Box a -> Seq Chunk
-render = join . chunksFromRods . rodRows
+render = join . chunksFromRodRows . rodRows
 
 
 -- # Tables

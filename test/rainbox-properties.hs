@@ -78,13 +78,4 @@ main = defaultMain . testGroup "Rainbox tests" $
       width c == F.sum (fmap X.length t)
     ]
 
-  , testGroup "rodsFromCore" $
-    [ testProperty "has no width if Core has no height" $ \w ->
-      let c = Core (Right (Height 0, w))
-      in F.sum (fmap width (rodsFromCore undefined c)) == 0
-
-    , testProperty "has width equal to Core if Core has height" $ \c ->
-      height c > 0 ==>
-      (F.sum (fmap width (rodsFromCore undefined c))) == width c
-    ]
   ]

@@ -39,7 +39,10 @@ instance Arbitrary a => Arbitrary (Seq a) where
   arbitrary = fmap Seq.fromList arbitrary
 
 instance Arbitrary RodRows where
-  arbitrary = sized $ \s -> resize (s `div` 10) $ fmap RodRows arbitrary
+  arbitrary = sized $ \s -> resize (s `div` 10) $ oneof
+    [ fmap RodRowsWithHeight arbitrary
+    , fmap RodRowsNoHeight arbitrary
+    ]
 
 instance Arbitrary a => Arbitrary (Payload a) where
   arbitrary = liftM3 Payload arbitrary arbitrary arbitrary
