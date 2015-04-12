@@ -34,17 +34,11 @@ tasty_quickcheck = closedOpen "tasty-quickcheck" [0,8,1] [0,9]
 quickcheck :: Package
 quickcheck = closedOpen "QuickCheck" [2,7] [2,9]
 
-chasingBottoms :: Package
-chasingBottoms = closedOpen "ChasingBottoms" [1,3,0] [1,4]
-
-anonymousSums :: Package
-anonymousSums = closedOpen "anonymous-sums" [0,4,0,0] [0,5]
-
 properties :: Properties
 properties = blank
   { name = "rainbox"
   , version = pkgVersion
-  , cabalVersion = Just (1, 14)
+  , cabalVersion = Just (1, 18)
   , buildType = Just simple
   , license = Just bsd3
   , licenseFile = "LICENSE"
@@ -80,7 +74,6 @@ libPackages =
   , bytestring
   , containers
   , text
-  , anonymousSums
   ]
 
 libDeps :: HasBuildInfo a => a
@@ -91,7 +84,6 @@ testDeps = buildDepends $ libPackages ++
   [ tasty
   , tasty_quickcheck
   , quickcheck
-  , chasingBottoms
   ]
 
 library
@@ -106,91 +98,32 @@ library ms =
   , libDeps
   ]
 
-visual
+testSection
   :: [String]
-  -- ^ Visual modules
-  -> Section
-visual ms = testSuite "rainbox-visual" $
-  [ exitcodeStdio
-  , ghcOpts
-  , otherModules ms
-  , mainIs "rainbox-visual.hs"
-  , hsSourceDirs ["test", "lib"]
-  , haskell2010
-  , testDeps
-  ]
-
-mosaic
-  :: FlagName
-  -- ^ mosaic flag
+  -- ^ Library modules
   -> [String]
-  -- ^ Mosaic modules
-  -> Section
-mosaic mosaic ms = executable "rainbox-mosaic"
-  [ mainIs "rainbox-mosaic.hs"
-  , condBlock (flag mosaic)
-    ( ghcOpts
-    , [ otherModules ms
-      , hsSourceDirs ["test", "lib"]
-      , haskell2010
-      , testDeps
-      ]
-    )
-    [ buildable False]
-  ]
-
-mainTest
-  :: [String]
   -- ^ Test modules
+  -> String
+  -- ^ Name of test
   -> Section
-mainTest ms = testSuite "rainbox-test"
-  [ ghcOpts
-  , exitcodeStdio
-  , hsSourceDirs ["test", "lib"]
-  , haskell2010
+testSection ms ts nm = testSuite nm $
+  [ mainIs (nm ++ ".hs")
   , testDeps
-  , mainIs "rainbox-test.hs"
-  ]
-
-grid
-  :: FlagName
-  -- ^ Grid flag
-  -> [String]
-  -- ^ All modules
-  -> Section
-grid fl ms = executable "rainbox-grid" $
-  [ mainIs "rainbox-grid.hs"
-  , condBlock (flag fl)
-    ( ghcOpts
-    , [ hsSourceDirs ["test", "lib"]
-      , haskell2010
-      , testDeps
-      ]
-    )
-    [ buildable False ]
+  , ghcOpts
+  , haskell2010
+  , hsSourceDirs ["lib", "test"]
+  , otherModules (ms ++ ts)
+  , exitcodeStdio
   ]
 
 main :: IO ()
 main = defaultMain $ do
   ms <- modules "lib"
   ts <- modules "test"
-  flagMosaic <- makeFlag "mosaic" $ FlagOpts
-    { flagDescription = "Build the rainbox-mosaic executable"
-    , flagDefault = False
-    , flagManual = True
-    }
-  flagGrid <- makeFlag "grid" $ FlagOpts
-    { flagDescription = "Build the rainbox-grid executable"
-    , flagDefault = False
-    , flagManual = True
-    }
   return
     ( properties
     , library ms
-    , [ visual (ms ++ ts)
-      , mosaic flagMosaic (ms ++ ts)
-      , mainTest (ms ++ ts)
-      , githubHead "massysett" "rainbox"
-      , grid flagGrid (ms ++ ts)
+    , [ githubHead "massysett" "rainbox"
+      , testSection ms ts "rainbox-properties"
       ]
     )

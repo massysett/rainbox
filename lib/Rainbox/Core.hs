@@ -75,11 +75,20 @@ newtype Width = Width Int
 class HasHeight a where
   height :: a -> Int
 
+instance HasHeight Height where
+  height (Height a) = max 0 a
+
+instance HasHeight Chunk where
+  height _ = 1
+
 instance (HasHeight a, HasHeight b) => HasHeight (Either a b) where
   height = either height height
 
 class HasWidth a where
   width :: a -> Int
+
+instance HasWidth Width where
+  width (Width a) = max 0 a
 
 instance HasWidth Chunk where
   width (Chunk _ ts) = F.sum . fmap X.length $ ts
@@ -95,14 +104,10 @@ newtype Core = Core (Either Chunk (Height, Width))
   deriving (Eq, Ord, Show)
 
 instance HasWidth Core where
-  width (Core ei) = case ei of
-    Left (Chunk _ t) -> F.sum . fmap X.length $ t
-    Right (_, Width w) -> max 0 w
+  width (Core ei) = either width (width . snd) ei
 
 instance HasHeight Core where
-  height (Core ei) = case ei of
-    Left _ -> 1
-    Right (Height h, _) -> max 0 h
+  height (Core ei) = either height (height . fst) ei
 
 -- # Rods
 
@@ -110,22 +115,6 @@ instance HasHeight Core where
 -- text 'Chunk' or of a number of spaces coupled with a background color.
 newtype Rod = Rod (Either (Int, Radiant) Chunk)
   deriving (Eq, Ord, Show)
-
--- | Convert a 'Core' to a 'Seq' of 'Rod' for rendering.
-rodsFromCore :: Radiant -> Core -> Seq Rod
-rodsFromCore rd (Core ei) = case ei of
-  Left ck -> Seq.singleton . Rod . Right $ ck
-  Right (Height h, Width w) -> Seq.replicate h . Rod . Left $ (w, rd)
-
--- | Converts a nested 'Seq' of 'Rod' to a nested 'Seq' of 'Chunk' in
--- preparation for rendering.  Newlines are added to the end of each
--- line.
-chunksFromRods :: RodRows -> Seq (Seq Chunk)
-chunksFromRods (RodRows rr) = fmap (|> "\n") . fmap (fmap chunkFromRod) $ rr
-  where
-    chunkFromRod (Rod ei) = case ei of
-      Left (i, r) -> (chunkFromText . X.replicate i $ " ") <> back r
-      Right c -> c
 
 instance HasWidth Rod where
   width (Rod ei) = case ei of
@@ -143,6 +132,22 @@ instance HasHeight RodRows where
 
 instance HasWidth RodRows where
   width (RodRows sq) = F.foldl' max 0 . fmap (F.sum . fmap width) $ sq
+
+-- | Convert a 'Core' to a 'Seq' of 'Rod' for rendering.
+rodsFromCore :: Radiant -> Core -> Seq Rod
+rodsFromCore rd (Core ei) = case ei of
+  Left ck -> Seq.singleton . Rod . Right $ ck
+  Right (Height h, Width w) -> Seq.replicate h . Rod . Left $ (w, rd)
+
+-- | Converts a nested 'Seq' of 'Rod' to a nested 'Seq' of 'Chunk' in
+-- preparation for rendering.  Newlines are added to the end of each
+-- line.
+chunksFromRods :: RodRows -> Seq (Seq Chunk)
+chunksFromRods (RodRows rr) = fmap (|> "\n") . fmap (fmap chunkFromRod) $ rr
+  where
+    chunkFromRod (Rod ei) = case ei of
+      Left (i, r) -> (chunkFromText . X.replicate i $ " ") <> back r
+      Right c -> c
 
 -- # Payload
 

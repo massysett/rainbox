@@ -1,33 +1,51 @@
-{-# LANGUAGE FlexibleInstances #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
-
--- | QuickCheck instances for all Rainbox modules.
 module Rainbox.Instances where
 
 import Control.Monad
 import Test.QuickCheck
+import Rainbox.Core
 import Rainbow.Instances ()
-import Rainbox
-import Rainbox.Box
+import Data.Sequence (Seq)
+import qualified Data.Sequence as Seq
+
+instance Arbitrary a => Arbitrary (Alignment a) where
+  arbitrary = oneof [ return Center, fmap NonCenter arbitrary ]
+
+instance Arbitrary Horizontal where
+  arbitrary = elements [ ATop, ABottom ]
+
+instance Arbitrary Vertical where
+  arbitrary = elements [ ALeft, ARight ]
 
 instance Arbitrary Height where
-  arbitrary = fmap Height arbitrary
+  arbitrary = fmap Height $ frequency
+    [ (3, fmap getNonNegative arbitrary)
+    , (1, arbitrary)
+    ]
 
 instance Arbitrary Width where
-  arbitrary = fmap Width arbitrary
+  arbitrary = fmap Width $ frequency
+    [ (3, fmap getNonNegative arbitrary)
+    , (1, arbitrary)
+    ]
 
-instance Arbitrary (Align Vert) where
-  arbitrary = elements [center, top, bottom]
+instance Arbitrary Core where
+  arbitrary = fmap Core arbitrary
 
-instance Arbitrary (Align Horiz) where
-  arbitrary = elements [center, left, right]
+instance Arbitrary Rod where
+  arbitrary = fmap Rod arbitrary
 
-instance Arbitrary Bar where
-  arbitrary = fmap Bar arbitrary
+instance Arbitrary a => Arbitrary (Seq a) where
+  arbitrary = fmap Seq.fromList arbitrary
 
--- | Creates a non-nested Box.
-instance Arbitrary Box where
-  arbitrary = liftM3 barsToBox arbitrary arbitrary arbitrary
+instance Arbitrary RodRows where
+  arbitrary = sized $ \s -> resize (s `div` 10) $ fmap RodRows arbitrary
+
+instance Arbitrary a => Arbitrary (Payload a) where
+  arbitrary = liftM3 Payload arbitrary arbitrary arbitrary
+
+instance Arbitrary a => Arbitrary (Box a) where
+  arbitrary = fmap Box arbitrary
 
 instance Arbitrary Cell where
   arbitrary = liftM4 Cell arbitrary arbitrary arbitrary arbitrary
