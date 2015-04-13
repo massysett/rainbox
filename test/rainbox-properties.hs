@@ -80,8 +80,44 @@ main = defaultMain . testGroup "Rainbox tests" $
     ]
 
   , testGroup "addVerticalPadding"
-    [ testProperty "all RodRows same height" allRodRowsSameHeight
+    [ testProperty "all RodRows same height" $
+      allRodRowsSameHeight . addVerticalPadding
     ]
+
+  , testGroup "UpDown"
+    [ testGroup "above + below is same as height" $
+      let sameAsHeight a = above a + below a == height a in
+      [ testProperty "Box Horizontal"
+          (\a -> sameAsHeight (a `asTypeOf` (undefined :: Box Horizontal)))
+      , testProperty "Payload Horizontal"
+          (\a -> sameAsHeight (a `asTypeOf` (undefined :: Payload Horizontal)))
+      ]
+    ]
+
+  , testGroup "horizontalMerge"
+    [ testProperty "Resulting RodRows has same height as inputs" $
+      \rr i ->
+      let lenR = case rr of
+            RodRowsNoHeight _ -> 0
+            RodRowsWithHeight sq -> Seq.length sq
+      in height (horizontalMerge (Seq.replicate (getPositive i) rr)) == lenR
+    ]
+
+  , testGroup "addHorizontalPadding"
+    [ testProperty "all RodRows same width" $
+      allRodRowsSameWidth . addHorizontalPadding
+    ]
+
+  , testGroup "verticalMerge"
+    [ testProperty "resulting RodRows same width as inputs" $ \rr i ->
+      let lenR = case rr of
+            RodRowsNoHeight wid -> max 0 wid
+            RodRowsWithHeight sqn -> case viewl sqn of
+              EmptyL -> 0
+              sqnRod :< _ -> F.sum . fmap width $ sqnRod
+      in width (verticalMerge (Seq.replicate (getPositive i) rr)) == lenR
+    ]
+
 
   ]
 
@@ -90,15 +126,30 @@ allRodRowsSameHeight sqnce = case viewl sqnce of
   EmptyL -> True
   x :< xs -> F.all (== height x) . fmap height $ xs
 
-allRodRowsSameWidth :: Seq RodRows -> Bool
-allRodRowsSameWidth sqnce = case viewl sqnce of
-  EmptyL -> True
-  x :< _ -> F.all (== height1) . join . fmap toLengths $ sqnce
-    where
-      height1 = case x of
-        RodRowsNoHeight w -> w
-        RodRowsWithHeight sqn -> case viewl sqn of
-          EmptyL -> 0
-          y :< _ -> F.sum . fmap width $ y
-      toLengths (RodRowsNoHeight w) = Seq.singleton w
-      toLengths (RodRowsWithHeight sq) = fmap (F.sum . fmap width) sq
+allRodRowsSameWidth :: Seq RodRows -> Property
+allRodRowsSameWidth sqnce = 
+  case viewl sqnce of
+    EmptyL -> property True
+    x :< _ -> counterexample (show (sqnce, lengths, height1))
+      $ F.all (== height1) lengths
+      where
+        lengths = join . fmap toLengths $ sqnce
+        height1 = case x of
+          RodRowsNoHeight w -> w
+          RodRowsWithHeight sqn -> case viewl sqn of
+            EmptyL -> 0
+            y :< _ -> F.sum . fmap width $ y
+        toLengths (RodRowsNoHeight w) = Seq.singleton w
+        toLengths (RodRowsWithHeight sq) = fmap (F.sum . fmap width) sq
+
+rodsLength :: Seq Rod -> Int
+rodsLength = F.sum . fmap width
+
+rodRowsLengths :: Seq (Seq Rod) -> Seq Int
+rodRowsLengths = fmap rodsLength
+
+seqRodsRowsLengths :: Seq RodRows -> Seq (Seq Int)
+seqRodsRowsLengths sq = fmap calc sq
+  where
+    calc (RodRowsNoHeight w) = Seq.singleton (max 0 w)
+    calc (RodRowsWithHeight sqn) = rodRowsLengths sqn
