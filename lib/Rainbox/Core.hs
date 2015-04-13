@@ -158,7 +158,7 @@ rodRowsFromCore bk (Core ei) = case ei of
     | otherwise -> RodRowsWithHeight . Seq.replicate h . Seq.singleton
         . Rod . Left $ (w, bk)
 
--- | Converts a nested 'Seq' of 'Rod' to a nested 'Seq' of 'Chunk' in
+-- | Converts a 'RodRows' to a nested 'Seq' of 'Chunk' in
 -- preparation for rendering.  Newlines are added to the end of each
 -- line.
 chunksFromRodRows :: RodRows -> Seq (Seq Chunk)

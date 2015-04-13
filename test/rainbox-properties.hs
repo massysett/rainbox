@@ -5,10 +5,11 @@ import Rainbox.Instances ()
 import Rainbow.Types
 import Test.Tasty
 import Test.Tasty.QuickCheck
-import Data.Sequence (Seq)
+import Data.Sequence (Seq, viewl, ViewL(..))
 import qualified Data.Sequence as Seq
 import qualified Data.Foldable as F
 import qualified Data.Text as X
+import Control.Monad
 
 main :: IO ()
 main = defaultMain . testGroup "Rainbox tests" $
@@ -78,4 +79,26 @@ main = defaultMain . testGroup "Rainbox tests" $
       width c == F.sum (fmap X.length t)
     ]
 
+  , testGroup "addVerticalPadding"
+    [ testProperty "all RodRows same height" allRodRowsSameHeight
+    ]
+
   ]
+
+allRodRowsSameHeight :: Seq RodRows -> Bool
+allRodRowsSameHeight sqnce = case viewl sqnce of
+  EmptyL -> True
+  x :< xs -> F.all (== height x) . fmap height $ xs
+
+allRodRowsSameWidth :: Seq RodRows -> Bool
+allRodRowsSameWidth sqnce = case viewl sqnce of
+  EmptyL -> True
+  x :< _ -> F.all (== height1) . join . fmap toLengths $ sqnce
+    where
+      height1 = case x of
+        RodRowsNoHeight w -> w
+        RodRowsWithHeight sqn -> case viewl sqn of
+          EmptyL -> 0
+          y :< _ -> F.sum . fmap width $ y
+      toLengths (RodRowsNoHeight w) = Seq.singleton w
+      toLengths (RodRowsWithHeight sq) = fmap (F.sum . fmap width) sq

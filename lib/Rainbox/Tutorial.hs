@@ -378,7 +378,7 @@ textWithin
   -- ^ Background color for larger box
   -> Text
   -> Box a
-textWithin a r c bs bl = within a r c bl . textBox bs
+textWithin a r c bs bl = wrap a bl . within a r c bs . textBox bs
 
 box1 :: Box Vertical
 box1 = mconcat
@@ -417,7 +417,7 @@ renderBox4 :: IO ()
 renderBox4 = mapM_ putChunk . toList . render $ box4
 
 box5 :: Box Horizontal
-box5 = box2 <> spreader center 12
+box5 = box4 <> spreader center 12
 
 renderBox5 :: IO ()
 renderBox5 = mapM_ putChunk . toList . render $ box5
