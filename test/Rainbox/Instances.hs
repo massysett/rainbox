@@ -41,7 +41,9 @@ instance Arbitrary a => Arbitrary (Seq a) where
 instance Arbitrary RodRows where
   arbitrary = sized $ \s -> resize (s `div` 10) $ oneof
     [ fmap RodRowsWithHeight arbitrary
-    , fmap RodRowsNoHeight arbitrary
+    , frequency [ (1, fmap RodRowsNoHeight arbitrary)
+                , (3, fmap (RodRowsNoHeight . getNonNegative) arbitrary)
+                ]
     ]
 
 instance Arbitrary a => Arbitrary (Payload a) where

@@ -266,12 +266,12 @@ addHorizontalPadding bx@(Box sqnce) = fmap eqlize sqnce
             lenLin = F.sum . fmap width $ lin
             lenLft = case a of
               Center -> maxLeft - (fst . split $ lenLin)
-              NonCenter ALeft -> 0
+              NonCenter ALeft -> maxLeft
               NonCenter ARight -> maxLeft - lenLin
             lenRgt = case a of
               Center -> maxRight - (snd . split $ lenLin)
               NonCenter ALeft -> maxRight - lenLin
-              NonCenter ARight -> 0
+              NonCenter ARight -> maxRight
             padder len
               | len < 1 = Seq.empty
               | otherwise = Seq.singleton . Rod . Left $ (len, rd)

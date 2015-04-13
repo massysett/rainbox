@@ -373,18 +373,20 @@ textWithin
   -> Int
   -- ^ Number of columns
   -> Radiant
-  -- ^ Background color
+  -- ^ Background color for smaller box
+  -> Radiant
+  -- ^ Background color for larger box
   -> Text
   -> Box a
-textWithin a r c b = within a r c b . textBox b
+textWithin a r c bs bl = within a r c bl . textBox bs
 
 box1 :: Box Vertical
 box1 = mconcat
-  [ textWithin left   4 6  blue      "v1"
-  , textWithin left   4 15 red       "v2"
-  , textWithin right  6 10 yellow    "v3"
-  , textWithin left   3 12 green     "v4"
-  , textWithin center 4 11 magenta   "v5"
+  [ textWithin left   4 6  blue      green   "v1"
+  , textWithin left   4 15 red       magenta "v2"
+  , textWithin right  6 10 yellow    blue    "v3"
+  , textWithin left   3 12 green     red     "v4"
+  , textWithin center 4 11 magenta   blue    "v5"
   ]
 
 renderBox1 :: IO ()
@@ -392,8 +394,8 @@ renderBox1 = mapM_ putChunk . toList . render $ box1
 
 box2 :: Box Horizontal
 box2 = mconcat
-  [ textWithin bottom 4 6  magenta "h1"
-  , textWithin top    5 12 blue    "h2"
+  [ textWithin bottom 4 6  magenta green "h1"
+  , textWithin top    5 12 blue    yellow "h2"
   ]
 
 renderBox2 :: IO ()
