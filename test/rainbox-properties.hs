@@ -110,12 +110,10 @@ main = defaultMain . testGroup "Rainbox tests" $
 
   , testGroup "verticalMerge"
     [ testProperty "resulting RodRows same width as inputs" $ \rr i ->
-      let lenR = case rr of
-            RodRowsNoHeight wid -> max 0 wid
-            RodRowsWithHeight sqn -> case viewl sqn of
-              EmptyL -> 0
-              sqnRod :< _ -> F.sum . fmap width $ sqnRod
-      in width (verticalMerge (Seq.replicate (getPositive i) rr)) == lenR
+      let lenR = width rr
+          mrge = verticalMerge (Seq.replicate (getPositive i) rr)
+          wdth = width mrge
+      in counterexample (show (mrge, wdth, lenR)) $ wdth == lenR
     ]
 
 

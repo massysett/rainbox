@@ -125,5 +125,6 @@ main = defaultMain $ do
     , library ms
     , [ githubHead "massysett" "rainbox"
       , testSection ms ts "rainbox-properties"
+      , testSection ms ts "rainbox-visual"
       ]
     )

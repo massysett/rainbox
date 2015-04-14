@@ -38,9 +38,17 @@ instance Arbitrary Rod where
 instance Arbitrary a => Arbitrary (Seq a) where
   arbitrary = fmap Seq.fromList arbitrary
 
+newtype NonEmptySeq a = NonEmptySeq { getNonEmptySeq :: Seq a }
+  deriving Show
+
+instance Arbitrary a => Arbitrary (NonEmptySeq a) where
+  arbitrary = do
+    NonEmpty xs <- arbitrary
+    return . NonEmptySeq . Seq.fromList $ xs
+
 instance Arbitrary RodRows where
   arbitrary = sized $ \s -> resize (s `div` 10) $ oneof
-    [ fmap RodRowsWithHeight arbitrary
+    [ fmap (RodRowsWithHeight . getNonEmptySeq) arbitrary
     , frequency [ (1, fmap RodRowsNoHeight arbitrary)
                 , (3, fmap (RodRowsNoHeight . getNonNegative) arbitrary)
                 ]

@@ -132,8 +132,13 @@ instance HasWidth Rod where
 data RodRows
   = RodRowsWithHeight (Seq (Seq Rod))
   -- ^ Each outer 'Seq' represents a single screen row.  Each 'Seq'
-  -- has a height of 1.  If the 'Seq' is empty, the 'RodRows' has no
-  -- width and no height.
+  -- has a height of 1.
+  --
+  -- The outer 'Seq' must have a length of at least 1, even if the
+  -- inner 'Seq' is empty.  If the outer 'Seq' has a length of zero,
+  -- undefined behavior occurs.  For a 'RodRows' with no height and no
+  -- width, use 'RodRowsNoHeight'.
+
   | RodRowsNoHeight Int
   -- ^ A 'RodRows' that has no height.  If the 'Int' is less than 1,
   -- the 'RodRows' has no width and no height.  Otherwise, the
