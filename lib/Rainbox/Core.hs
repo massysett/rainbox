@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# OPTIONS_HADDOCK not-home #-}
 -- | Contains the innards of 'Rainbox'.  You shouldn't need anything
 -- in here.  Some functions here are partial or have undefined results
