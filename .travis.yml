@@ -25,7 +25,7 @@ script:
   - cabal configure --enable-tests -v2
   - cabal build
   - cabal test
-  - /dist/build/rainbox-visual/rainbox-visual
+  - dist/build/rainbox-visual/rainbox-visual
   - cabal check
   - cabal sdist
 
