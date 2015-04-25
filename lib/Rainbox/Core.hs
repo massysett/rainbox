@@ -14,6 +14,7 @@ import Rainbow.Types (Chunk(..))
 import Data.Sequence (Seq, ViewL(..), viewl, (|>), (<|))
 import qualified Data.Foldable as F
 import qualified Data.Sequence as Seq
+import Data.Text (Text)
 import qualified Data.Text as X
 import qualified Data.Map as M
 
@@ -80,7 +81,7 @@ class HasHeight a where
 instance HasHeight Height where
   height (Height a) = max 0 a
 
-instance HasHeight Chunk where
+instance HasHeight (Chunk a) where
   height _ = 1
 
 instance (HasHeight a, HasHeight b) => HasHeight (Either a b) where
@@ -92,8 +93,8 @@ class HasWidth a where
 instance HasWidth Width where
   width (Width a) = max 0 a
 
-instance HasWidth Chunk where
-  width (Chunk _ ts) = F.sum . fmap X.length $ ts
+instance HasWidth (Chunk Text) where
+  width (Chunk _ _ t) = X.length t
 
 instance (HasWidth a, HasWidth b) => HasWidth (Either a b) where
   width = either width width
@@ -102,7 +103,7 @@ instance (HasWidth a, HasWidth b) => HasWidth (Either a b) where
 
 -- | A 'Core' is either a single 'Chunk' or, if the box is blank, is
 -- merely a height and a width.
-newtype Core = Core (Either Chunk (Height, Width))
+newtype Core = Core (Either (Chunk Text) (Height, Width))
   deriving (Eq, Ord, Show)
 
 instance HasWidth Core where
@@ -115,7 +116,7 @@ instance HasHeight Core where
 
 -- | An intermediate type used in rendering; it consists either of
 -- text 'Chunk' or of a number of spaces coupled with a background color.
-newtype Rod = Rod (Either (Int, Radiant) Chunk)
+newtype Rod = Rod (Either (Int, Radiant) (Chunk Text))
   deriving (Eq, Ord, Show)
 
 instance HasWidth Rod where
@@ -167,12 +168,12 @@ rodRowsFromCore bk (Core ei) = case ei of
 -- | Converts a 'RodRows' to a nested 'Seq' of 'Chunk' in
 -- preparation for rendering.  Newlines are added to the end of each
 -- line.
-chunksFromRodRows :: RodRows -> Seq (Seq Chunk)
+chunksFromRodRows :: RodRows -> Seq (Seq (Chunk Text))
 chunksFromRodRows rr = case rr of
-  RodRowsWithHeight sq -> fmap (|> "\n") . fmap (fmap chunkFromRod) $ sq
+  RodRowsWithHeight sq -> fmap (|> chunk "\n") . fmap (fmap chunkFromRod) $ sq
     where
       chunkFromRod (Rod ei) = case ei of
-        Left (i, r) -> (chunkFromText . X.replicate i $ " ") <> back r
+        Left (i, r) -> (chunk . X.replicate i $ " ") & back r
         Right c -> c
   RodRowsNoHeight _ -> Seq.empty
 
@@ -345,7 +346,7 @@ instance Orientation Vertical where
     Payload (NonCenter ALeft) r (Right . Core . Right $
       (Height (max 0 i), Width 0))
   spreader a i = Box . Seq.singleton $
-    Payload a noColorRadiant (Right . Core . Right $
+    Payload a mempty (Right . Core . Right $
       (Height 0, Width (max 0 i)))
 
 instance Orientation Horizontal where
@@ -355,7 +356,7 @@ instance Orientation Horizontal where
     Payload (NonCenter ATop) r (Right . Core . Right $
       (Height 0, Width (max 0 i)))
   spreader a i = Box . Seq.singleton $
-    Payload a noColorRadiant (Right . Core . Right $
+    Payload a mempty (Right . Core . Right $
       (Height (max 0 i), Width 0))
 
 -- # port, starboard, above, below
@@ -428,7 +429,7 @@ fromChunk
   -- ^ Background color.  The background color in the 'Chunk' is not
   -- changed; this background is used if the 'Payload' must be padded
   -- later on.
-  -> Chunk
+  -> Chunk Text
   -> Box a
 fromChunk a r = Box . Seq.singleton . Payload a r  . Right . Core . Left
 
@@ -464,7 +465,7 @@ wrap a r = Box . Seq.singleton . Payload a r . Left . rodRows
 -- | Convert a box to a 'Seq' of 'Chunk' in preparation for rendering.
 -- Use 'F.toList' to convert the 'Seq' of 'Chunk' to a list so that
 -- you can print it using the functions in "Rainbow".
-render :: Orientation a => Box a -> Seq Chunk
+render :: Orientation a => Box a -> Seq (Chunk Text)
 render = join . chunksFromRodRows . rodRows
 
 
@@ -472,7 +473,7 @@ render = join . chunksFromRodRows . rodRows
 
 -- | A single cell in a spreadsheet-like grid.
 data Cell = Cell
-  { cellRows :: Seq (Seq Chunk)
+  { cellRows :: Seq (Seq (Chunk Text))
   -- ^ The cell can have multiple rows of text; there is one 'Seq' for
   -- each row of text.
   , cellHoriz :: Alignment Horizontal
@@ -493,10 +494,10 @@ data Cell = Cell
 separator :: Radiant -> Int -> Cell
 separator rd i = Cell (Seq.singleton (Seq.singleton ck)) top left rd
   where
-    ck = (chunkFromText $ X.replicate (max 0 i) " ") <> back rd
+    ck = (chunk $ X.replicate (max 0 i) " ") & back rd
 
 emptyCell :: Cell
-emptyCell = Cell Seq.empty center center noColorRadiant
+emptyCell = Cell Seq.empty center center mempty
 
 
 -- Cells by row:
@@ -526,7 +527,7 @@ tableByRows
   . equalize emptyCell
 
 rowToBoxV :: Box Horizontal -> Box Vertical
-rowToBoxV = wrap center noColorRadiant
+rowToBoxV = wrap center mempty
 
 cellToBoxV :: Cell -> (Box Vertical, Alignment Horizontal, Radiant)
 cellToBoxV (Cell rs ah av rd) = (bx, ah, rd)
@@ -599,7 +600,7 @@ tableByColumns
 
 
 rowToBoxH :: Box Vertical -> Box Horizontal
-rowToBoxH = wrap top noColorRadiant
+rowToBoxH = wrap top mempty
 
 
 cellToBoxH :: Cell -> (Box Horizontal, Alignment Vertical, Radiant)

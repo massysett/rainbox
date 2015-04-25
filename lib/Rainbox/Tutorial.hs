@@ -340,7 +340,7 @@ import Rainbox
 -- given background is used as the background color for any added
 -- padding.
 textBox :: Radiant -> Text -> Box a
-textBox r = fromChunk center r . chunkFromText
+textBox r = fromChunk center r . chunk
 
 -- | Centers the given 'Box' within a larger 'Box' that has the given
 -- height and width and background color.  The larger 'Box' has the
@@ -445,36 +445,36 @@ data Station = Station
 
 nameCell :: Radiant -> Text -> Cell
 nameCell bk nm
-  = Cell (Seq.singleton . Seq.singleton $ (chunkFromText nm <> back bk))
+  = Cell (Seq.singleton . Seq.singleton $ (chunk nm & back bk))
          top left bk
 
 linesCell :: Radiant -> [Line] -> Cell
 linesCell bk lns = Cell (Seq.fromList . fmap (lineRow bk) $ lns)
                         top right bk
 
-lineRow :: Radiant -> Line -> Seq Chunk
+lineRow :: Radiant -> Line -> Seq (Chunk Text)
 lineRow bk li = Seq.singleton ck
   where
-    ck = chunkFromText (X.pack . show $ li) <> fore clr <> back bk
+    ck = chunk (X.pack . show $ li) & fore clr & back bk
     clr = case li of
       Red -> red
       Blue -> blue
-      Orange -> Radiant yellow8 (Just . Color256 . Just $ 220)
+      Orange -> yellow <> color256 220
       Green -> green
       Yellow -> yellow
-      Silver -> Radiant white8 (Just grey)
+      Silver -> white <> grey
 
 
 addressCell :: Radiant -> [Text] -> Cell
 addressCell bk lns = Cell (Seq.fromList . fmap addrRow $ lns) top center bk
   where
-    addrRow txt = Seq.singleton $ chunkFromText txt <> back bk
+    addrRow txt = Seq.singleton $ chunk txt & back bk
 
 undergroundCell :: Radiant -> Bool -> Cell
 undergroundCell bk bl
   = Cell (Seq.singleton . Seq.singleton $ ck) top left bk
   where
-    ck = (if bl then "Yes" else "No") <> back bk
+    ck = (chunk $ if bl then "Yes" else "No") & back bk
 
 -- | Converts a 'Station' to a list of 'Cell'.
 
@@ -490,10 +490,10 @@ stationTable :: Box Vertical
 stationTable
   = tableByRows
   . Seq.fromList
-  . zipWith stationRow (cycle [coloredBack, noColorRadiant])
+  . zipWith stationRow (cycle [coloredBack, mempty])
   $ stations
   where
-    coloredBack = Radiant noColor8 (Just . Color256 . Just $ 195)
+    coloredBack = mempty <> color256 195
     stationRow bk
       = intersperse (separator bk 1)
       . Seq.fromList
