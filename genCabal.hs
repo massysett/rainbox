@@ -6,7 +6,7 @@ import Cartel
 
 -- Package version
 pkgVersion :: [Word]
-pkgVersion = [0,14,0,0]
+pkgVersion = [0,16,0,0]
 
 -- Dependencies
 
@@ -20,7 +20,7 @@ containers :: Package
 containers = closedOpen "containers" [0,5,5] [0,6]
 
 rainbow :: Package
-rainbow = nextBreaking "rainbow" [0,24]
+rainbow = nextBreaking "rainbow" [0,26]
 
 text :: Package
 text = closedOpen "text" [0,11,3,1] [1,3,0,0]

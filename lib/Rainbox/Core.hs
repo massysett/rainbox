@@ -94,7 +94,7 @@ instance HasWidth Width where
   width (Width a) = max 0 a
 
 instance HasWidth (Chunk Text) where
-  width (Chunk _ _ t) = X.length t
+  width (Chunk _ t) = X.length t
 
 instance (HasWidth a, HasWidth b) => HasWidth (Either a b) where
   width = either width width

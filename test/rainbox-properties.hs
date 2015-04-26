@@ -75,7 +75,7 @@ main = defaultMain . testGroup "Rainbox tests" $
   , testGroup "chunk" $
     [ testProperty "height is always 1" $ \c ->
       let _types = c :: Chunk X.Text in height c == 1
-    , testProperty "width is sum of number of characters" $ \c@(Chunk _ _ t) ->
+    , testProperty "width is sum of number of characters" $ \c@(Chunk _ t) ->
       let _types = c :: Chunk X.Text in width c == X.length t
     ]
 
