@@ -1,6 +1,10 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveFoldable #-}
+{-# LANGUAGE DeriveTraversable #-}
+{-# LANGUAGE TemplateHaskell #-}
 {-# OPTIONS_HADDOCK not-home #-}
 -- | Contains the innards of 'Rainbox'.  You shouldn't need anything
 -- in here.  Some functions here are partial or have undefined results
@@ -9,11 +13,12 @@ module Rainbox.Core where
 
 import Rainbow
 import Control.Monad (join)
-import Data.Monoid
+import Control.Lens hiding (below)
 import Rainbow.Types (Chunk(..))
-import Data.Sequence (Seq, ViewL(..), viewl, (|>), (<|))
-import qualified Data.Foldable as F
+import Data.Sequence (Seq, ViewL(..), viewl)
 import qualified Data.Sequence as Seq
+import qualified Data.Foldable as F
+import qualified Data.Traversable as T
 import Data.Text (Text)
 import qualified Data.Text as X
 import qualified Data.Map as M
@@ -23,16 +28,27 @@ import qualified Data.Map as M
 -- | Alignment.  Used in conjunction with 'Horizontal' and 'Vertical',
 -- this determines how a payload aligns with the axis of a 'Box'.
 data Alignment a = Center | NonCenter a
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Functor, F.Foldable, T.Traversable)
+
+-- | 'mempty' is 'center'.  'mappend' takes the rightmost non-'center'
+-- value.
+
+instance Monoid (Alignment a) where
+  mempty = Center
+  mappend x y = case x of
+    Center -> y
+    NonCenter a -> case y of
+      Center -> NonCenter a
+      NonCenter b -> NonCenter b
 
 -- # Horizontal and vertical
 
 -- | Determines how a payload aligns with a horizontal axis.
-data Horizontal = ATop | ABottom
+data Horizontal = Top | Bottom
   deriving (Eq, Ord, Show)
 
 -- | Determines how a payload aligns with a vertical axis.
-data Vertical = ALeft | ARight
+data Vertical = Port | Starboard
   deriving (Eq, Ord, Show)
 
 -- | Place this payload so that it is centered on the vertical axis or
@@ -50,19 +66,19 @@ centerV = center
 
 -- | Place this payload's left edge on the vertical axis.
 left :: Alignment Vertical
-left = NonCenter ALeft
+left = NonCenter Port
 
 -- | Place this payload's right edge on the vertical axis.
 right :: Alignment Vertical
-right = NonCenter ARight
+right = NonCenter Starboard
 
 -- | Place this payload's top edge on the horizontal axis.
 top :: Alignment Horizontal
-top = NonCenter ATop
+top = NonCenter Top
 
 -- | Place this payload's bottom edge on the horizontal axis.
 bottom :: Alignment Horizontal
-bottom = NonCenter ABottom
+bottom = NonCenter Bottom
 
 
 -- # Width and height
@@ -247,6 +263,13 @@ horizontalMerge sqn = case viewl sqn of
           RodRowsWithHeight sq' -> Seq.zipWith (<>) acc sq'
           RodRowsNoHeight _ -> error "horizontalMerge: error 2"
 
+-- | Split a number into two parts, so that the sum of the two parts
+-- is equal to the original number.
+split :: Int -> (Int, Int)
+split i = (r, r + rm)
+  where
+    (r, rm) = i `quotRem` 2
+
 -- | Adds padding to the left and right of each Payload.
 -- A Payload with a Core is converted to a RodRows and has padding
 -- added; a Payload with a RodRows has necessary padding added to the
@@ -273,12 +296,12 @@ addHorizontalPadding bx@(Box sqnce) = fmap eqlize sqnce
             lenLin = F.sum . fmap width $ lin
             lenLft = case a of
               Center -> maxLeft - (fst . split $ lenLin)
-              NonCenter ALeft -> maxLeft
-              NonCenter ARight -> maxLeft - lenLin
+              NonCenter Port -> maxLeft
+              NonCenter Starboard -> maxLeft - lenLin
             lenRgt = case a of
               Center -> maxRight - (snd . split $ lenLin)
-              NonCenter ALeft -> maxRight - lenLin
-              NonCenter ARight -> maxRight
+              NonCenter Port -> maxRight - lenLin
+              NonCenter Starboard -> maxRight
             padder len
               | len < 1 = Seq.empty
               | otherwise = Seq.singleton . Rod . Left $ (len, rd)
@@ -343,7 +366,7 @@ instance Orientation Vertical where
   rodRows = verticalMerge . addHorizontalPadding
 
   spacer r i = Box . Seq.singleton $
-    Payload (NonCenter ALeft) r (Right . Core . Right $
+    Payload (NonCenter Port) r (Right . Core . Right $
       (Height (max 0 i), Width 0))
   spreader a i = Box . Seq.singleton $
     Payload a mempty (Right . Core . Right $
@@ -353,7 +376,7 @@ instance Orientation Horizontal where
   rodRows = horizontalMerge . addVerticalPadding
 
   spacer r i = Box . Seq.singleton $
-    Payload (NonCenter ATop) r (Right . Core . Right $
+    Payload (NonCenter Top) r (Right . Core . Right $
       (Height 0, Width (max 0 i)))
   spreader a i = Box . Seq.singleton $
     Payload a mempty (Right . Core . Right $
@@ -380,24 +403,24 @@ class UpDown a where
 
 instance LeftRight (Payload Vertical) where
   port (Payload a _ ei) = case a of
-    NonCenter ALeft -> 0
-    NonCenter ARight -> width ei
+    NonCenter Port -> 0
+    NonCenter Starboard -> width ei
     Center -> fst . split . width $ ei
 
   starboard (Payload a _ s3) = case a of
-    NonCenter ALeft -> width s3
-    NonCenter ARight -> 0
+    NonCenter Port -> width s3
+    NonCenter Starboard -> 0
     Center -> snd . split . width $ s3
 
 instance UpDown (Payload Horizontal) where
   above (Payload a _ s3) = case a of
-    NonCenter ATop -> 0
-    NonCenter ABottom -> height s3
+    NonCenter Top -> 0
+    NonCenter Bottom -> height s3
     Center -> fst . split . height $ s3
 
   below (Payload a _ s3) = case a of
-    NonCenter ATop -> height s3
-    NonCenter ABottom -> 0
+    NonCenter Top -> height s3
+    NonCenter Bottom -> 0
     Center -> snd . split . height $ s3
 
 instance LeftRight (Box Vertical) where
@@ -473,21 +496,40 @@ render = join . chunksFromRodRows . rodRows
 
 -- | A single cell in a spreadsheet-like grid.
 data Cell = Cell
-  { cellRows :: Seq (Seq (Chunk Text))
+  { _rows :: Seq (Seq (Chunk Text))
   -- ^ The cell can have multiple rows of text; there is one 'Seq' for
   -- each row of text.
-  , cellHoriz :: Alignment Horizontal
+  , _horizontal :: Alignment Horizontal
   -- ^ How this 'Cell' should align compared to other 'Cell' in its
   -- row.
-  , cellVert :: Alignment Vertical
+  , _vertical :: Alignment Vertical
   -- ^ How this 'Cell' should align compared to other 'Cell' in its column.
-  , cellBackground :: Radiant
+  , _background :: Radiant
   -- ^ Background color for this cell.  The background in the
   -- individual 'Chunk' in the 'cellRows' are not affected by
   -- 'cellBackground'; instead, 'cellBackground' determines the color
   -- of necessary padding that will be added so that the cells make a
   -- uniform table.
-  }
+  } deriving (Eq, Ord, Show)
+
+makeLenses ''Cell
+
+-- | 'mappend' combines two 'Cell' horizontally so they are
+-- side-by-side, left-to-right.  The '_horizontal', '_vertical', and
+-- '_background' fields are combined using their respective 'Monoid'
+-- instances.  'mempty' uses the respective 'mempty' value for each
+-- field.
+instance Monoid Cell where
+  mempty = Cell mempty mempty mempty mempty
+  mappend (Cell rx hx vx bx) (Cell ry hy vy by)
+    = Cell (zipSeqs rx ry) (hx <> hy) (vx <> vy) (bx <> by)
+    where
+      zipSeqs x y = Seq.zipWith (<>) x' y'
+        where
+          x' = x <> Seq.replicate
+            (max 0 (Seq.length y - Seq.length x)) Seq.empty
+          y' = y <> Seq.replicate
+            (max 0 (Seq.length x - Seq.length y)) Seq.empty
 
 -- | Creates a blank 'Cell' with the given background color and width;
 -- useful for adding separators between columns.
@@ -495,10 +537,6 @@ separator :: Radiant -> Int -> Cell
 separator rd i = Cell (Seq.singleton (Seq.singleton ck)) top left rd
   where
     ck = (chunk $ X.replicate (max 0 i) " ") & back rd
-
-emptyCell :: Cell
-emptyCell = Cell Seq.empty center center mempty
-
 
 -- Cells by row:
 -- 0. Ensure each row is equal length
@@ -524,7 +562,7 @@ tableByRows
   . uncurry padBoxV
   . addWidthMap
   . fmap (fmap cellToBoxV)
-  . equalize emptyCell
+  . equalize mempty
 
 rowToBoxV :: Box Horizontal -> Box Vertical
 rowToBoxV = wrap center mempty
@@ -596,7 +634,7 @@ tableByColumns
   . uncurry padBoxH
   . addHeightMap
   . fmap (fmap cellToBoxH)
-  . equalize emptyCell
+  . equalize mempty
 
 
 rowToBoxH :: Box Vertical -> Box Horizontal
@@ -674,11 +712,4 @@ intersperse new sq = case viewl sq of
       go sqnce = case viewl sqnce of
         EmptyL -> Seq.empty
         a :< as -> new <| a <| go as
-
--- | Split a number into two parts, so that the sum of the two parts
--- is equal to the original number.
-split :: Int -> (Int, Int)
-split i = (r, r + rm)
-  where
-    (r, rm) = i `quotRem` 2
 

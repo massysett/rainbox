@@ -12,10 +12,10 @@ instance Arbitrary a => Arbitrary (Alignment a) where
   arbitrary = oneof [ return Center, fmap NonCenter arbitrary ]
 
 instance Arbitrary Horizontal where
-  arbitrary = elements [ ATop, ABottom ]
+  arbitrary = elements [ Top, Bottom ]
 
 instance Arbitrary Vertical where
-  arbitrary = elements [ ALeft, ARight ]
+  arbitrary = elements [ Port, Starboard ]
 
 instance Arbitrary Height where
   arbitrary = fmap Height $ frequency

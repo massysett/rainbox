@@ -13,7 +13,6 @@
 
 module Rainbow.Instances where
 
-import Control.Applicative
 import Test.QuickCheck
 import Rainbow.Types
 import qualified Data.Text as X

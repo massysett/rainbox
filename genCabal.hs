@@ -6,7 +6,7 @@ import Cartel
 
 -- Package version
 pkgVersion :: [Word]
-pkgVersion = [0,16,0,0]
+pkgVersion = [0,18,0,0]
 
 -- Dependencies
 
@@ -21,6 +21,9 @@ containers = closedOpen "containers" [0,5,5] [0,6]
 
 rainbow :: Package
 rainbow = nextBreaking "rainbow" [0,26]
+
+lens :: Package
+lens = package "lens" (gtEq [4,9])
 
 text :: Package
 text = closedOpen "text" [0,11,3,1] [1,3,0,0]
@@ -47,7 +50,7 @@ properties = blank
   , maintainer = "omari@smileystation.com"
   , stability = "Experimental"
   , homepage = "http://www.github.com/massysett/rainbox"
-  , bugReports = "http://www.github.com/massyett/rainbox/issues"
+  , bugReports = "http://www.github.com/massysett/rainbox/issues"
   , synopsis = "Two-dimensional box pretty printing, with colors"
   , description =
     [ "Prints boxes in two dimensions, with colors.  Boxes are"
@@ -74,6 +77,7 @@ libPackages =
   , bytestring
   , containers
   , text
+  , lens
   ]
 
 libDeps :: HasBuildInfo a => a
@@ -96,6 +100,7 @@ library ms =
   , ghcOpts
   , hsSourceDirs ["lib"]
   , libDeps
+  , otherExtensions ["TemplateHaskell"]
   ]
 
 testSection
@@ -114,6 +119,7 @@ testSection ms ts nm = testSuite nm $
   , hsSourceDirs ["lib", "test"]
   , otherModules (ms ++ ts)
   , exitcodeStdio
+  , otherExtensions ["TemplateHaskell"]
   ]
 
 main :: IO ()

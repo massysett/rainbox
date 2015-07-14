@@ -1,5 +1,12 @@
+# Note on 2015-07-14:
+
+# At this time, do not upgrade to the travis container-based
+# infrastructure.  It does not allow use of sudo; any outside
+# packages, such as the hvr GHC packages, have to be pre-approved.
+# Currently GHC 7.10 is not pre-approved.  Also, I could not figure
+# out how to get the packages to install.
+
 env:
-  - CABALVER=1.18 GHCVER=7.8.3
   - CABALVER=1.22 GHCVER=7.10.1
 
 before_install:

@@ -39,7 +39,7 @@ vertical payload also has an alignment.  The alignment determines
 whether the payload lines up along the axis on its left side, right
 side, or in the center of the payload.
 
-The vertical payload also has a background color, which as type
+The vertical payload also has a background color, which has type
 'Radiant'.  Think of the background color as extending infinitely from
 both the left and right side of the vertical payload.  When the
 vertical payload is combined with other vertical payloads into a 'Box'

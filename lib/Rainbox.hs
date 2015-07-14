@@ -42,6 +42,10 @@ module Rainbox
 
   -- * Tables
   , Cell(..)
+  , rows
+  , horizontal
+  , vertical
+  , background
   , tableByRows
   , tableByColumns
   , separator
