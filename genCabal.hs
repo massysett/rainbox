@@ -6,36 +6,36 @@ import Cartel
 
 -- Package version
 pkgVersion :: [Word]
-pkgVersion = [0,18,0,0]
+pkgVersion = [0,18,0,2]
 
 -- Dependencies
 
 base :: Package
-base = closedOpen "base" [4,5,0,0] [4,9,0,0]
+base = closedOpen "base" [4,8,0,0] [5]
 
 bytestring :: Package
-bytestring = closedOpen "bytestring" [0,10] [0,11]
+bytestring = package "bytestring" (gtEq [0,10])
 
 containers :: Package
-containers = closedOpen "containers" [0,5,5] [0,6]
+containers = package "containers" (gtEq [0,5,5])
 
 rainbow :: Package
-rainbow = nextBreaking "rainbow" [0,26]
+rainbow = package "rainbow" (gtEq [0,26])
 
 lens :: Package
 lens = package "lens" (gtEq [4,9])
 
 text :: Package
-text = closedOpen "text" [0,11,3,1] [1,3,0,0]
+text = package "text" (gtEq [0,11,3,1])
 
 tasty :: Package
-tasty = closedOpen "tasty" [0,10,1] [0,11]
+tasty = package "tasty" (gtEq [0,10,1])
 
 tasty_quickcheck :: Package
-tasty_quickcheck = closedOpen "tasty-quickcheck" [0,8,1] [0,9]
+tasty_quickcheck = package "tasty-quickcheck" (gtEq [0,8,1])
 
 quickcheck :: Package
-quickcheck = closedOpen "QuickCheck" [2,7] [2,9]
+quickcheck = package "QuickCheck" (gtEq [2,7])
 
 properties :: Properties
 properties = blank
