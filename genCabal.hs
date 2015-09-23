@@ -52,6 +52,7 @@ properties = blank
   , homepage = "http://www.github.com/massysett/rainbox"
   , bugReports = "http://www.github.com/massysett/rainbox/issues"
   , synopsis = "Two-dimensional box pretty printing, with colors"
+  , testedWith = [(ghc, eq [7,10,2])]
   , description =
     [ "Prints boxes in two dimensions, with colors.  Boxes are"
     , "automatically padded with necessary whitespace."
