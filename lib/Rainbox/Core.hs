@@ -11,17 +11,18 @@
 -- if their inputs don't respect particular invariants.
 module Rainbox.Core where
 
-import Rainbow
-import Control.Monad (join)
-import Control.Lens hiding (below)
-import Rainbow.Types (Chunk(..))
-import Data.Sequence (Seq, ViewL(..), viewl)
-import qualified Data.Sequence as Seq
+import           Control.Lens ( (|>) , (&) , makeLenses , (<|))
+import           Control.Monad (join)
 import qualified Data.Foldable as F
-import qualified Data.Traversable as T
-import Data.Text (Text)
-import qualified Data.Text as X
 import qualified Data.Map as M
+import           Data.Monoid ((<>))
+import           Data.Sequence (Seq, ViewL (EmptyL, (:<)), viewl)
+import qualified Data.Sequence as Seq
+import           Data.Text (Text)
+import qualified Data.Text as X
+import qualified Data.Traversable as T
+import           Rainbow ( Chunk , Radiant , chunk , back)
+import           Rainbow.Types (Chunk (_yarn))
 
 -- # Alignment
 
@@ -110,7 +111,7 @@ instance HasWidth Width where
   width (Width a) = max 0 a
 
 instance HasWidth (Chunk Text) where
-  width (Chunk _ t) = X.length t
+  width ck = X.length . _yarn $ ck
 
 instance (HasWidth a, HasWidth b) => HasWidth (Either a b) where
   width = either width width

@@ -326,101 +326,102 @@ Rainbox does not work on infinite inputs.
 -}
 module Rainbox.Tutorial where
 
+import Control.Lens ((&))
 import Data.Foldable (toList)
-import Data.Monoid
+import Data.Monoid ((<>))
 import Data.Sequence (Seq)
 import qualified Data.Sequence as Seq
 import Data.Text (Text)
 import qualified Data.Text as X
-import Rainbow
-import Rainbox
+import qualified Rainbow
+import qualified Rainbox
 
 -- | Create a 'Box' for the given text.  The default foreground and
 -- background colors of the terminal are used for the 'Text'; the
 -- given background is used as the background color for any added
 -- padding.
-textBox :: Radiant -> Text -> Box a
-textBox r = fromChunk center r . chunk
+textBox :: Rainbow.Radiant -> Text -> Rainbox.Box a
+textBox r = Rainbox.fromChunk Rainbox.center r . Rainbow.chunk
 
 -- | Centers the given 'Box' within a larger 'Box' that has the given
 -- height and width and background color.  The larger 'Box' has the
 -- given 'Alignment'.
 within
-  :: Orientation a
-  => Alignment a
+  :: Rainbox.Orientation a
+  => Rainbox.Alignment a
   -> Int
   -- ^ Number of rows
   -> Int
   -- ^ Number of columns
-  -> Radiant
+  -> Rainbow.Radiant
   -- ^ Background color
-  -> Box a
-  -> Box a
+  -> Rainbox.Box a
+  -> Rainbox.Box a
 within a r c b
-  = wrap a b
-  . mappend (spreader center r)
-  . wrap centerH b
-  . mappend (spreader center c)
-  . wrap centerV b
+  = Rainbox.wrap a b
+  . mappend (Rainbox.spreader Rainbox.center r)
+  . Rainbox.wrap Rainbox.centerH b
+  . mappend (Rainbox.spreader Rainbox.center c)
+  . Rainbox.wrap Rainbox.centerV b
 
 -- | Puts the given text in the center of a box.  The resulting box is
 -- center aligned.
 textWithin
-  :: Orientation a
-  => Alignment a
+  :: Rainbox.Orientation a
+  => Rainbox.Alignment a
   -> Int
   -- ^ Number of rows
   -> Int
   -- ^ Number of columns
-  -> Radiant
+  -> Rainbow.Radiant
   -- ^ Background color for smaller box
-  -> Radiant
+  -> Rainbow.Radiant
   -- ^ Background color for larger box
   -> Text
-  -> Box a
-textWithin a r c bs bl = wrap a bl . within a r c bs . textBox bs
+  -> Rainbox.Box a
+textWithin a r c bs bl = Rainbox.wrap a bl . within a r c bs . textBox bs
 
-box1 :: Box Vertical
+box1 :: Rainbox.Box Rainbox.Vertical
 box1 = mconcat
-  [ textWithin left   4 6  blue      green   "v1"
-  , textWithin left   4 15 red       magenta "v2"
-  , textWithin right  6 10 yellow    blue    "v3"
-  , textWithin left   3 12 green     red     "v4"
-  , textWithin center 4 11 magenta   blue    "v5"
+  [ textWithin Rainbox.left   4 6  Rainbow.blue      Rainbow.green   "v1"
+  , textWithin Rainbox.left   4 15 Rainbow.red       Rainbow.magenta "v2"
+  , textWithin Rainbox.right  6 10 Rainbow.yellow    Rainbow.blue    "v3"
+  , textWithin Rainbox.left   3 12 Rainbow.green     Rainbow.red     "v4"
+  , textWithin Rainbox.center 4 11 Rainbow.magenta   Rainbow.blue    "v5"
   ]
 
 renderBox1 :: IO ()
-renderBox1 = mapM_ putChunk . toList . render $ box1
+renderBox1 = mapM_ Rainbow.putChunk . toList . Rainbox.render $ box1
 
-box2 :: Box Horizontal
+box2 :: Rainbox.Box Rainbox.Horizontal
 box2 = mconcat
-  [ textWithin bottom 4 6  magenta green "h1"
-  , textWithin top    5 12 blue    yellow "h2"
+  [ textWithin Rainbox.bottom 4 6  Rainbow.magenta Rainbow.green "h1"
+  , textWithin Rainbox.top    5 12 Rainbow.blue    Rainbow.yellow "h2"
   ]
 
 renderBox2 :: IO ()
-renderBox2 = mapM_ putChunk . toList . render $ box2
+renderBox2 = mapM_ Rainbow.putChunk . toList . Rainbox.render $ box2
 
-box3 :: Box Horizontal
+box3 :: Rainbox.Box Rainbox.Horizontal
 box3 = mconcat
-  [ wrap top yellow box1
+  [ Rainbox.wrap Rainbox.top Rainbow.yellow box1
   , box2
   ]
 
 renderBox3 :: IO ()
-renderBox3 = mapM_ putChunk . toList . render $ box3
+renderBox3 = mapM_ Rainbow.putChunk . toList . Rainbox.render $ box3
 
-box4 :: Box Horizontal
-box4 = box2 <> spacer cyan 3
+box4 :: Rainbox.Box Rainbox.Horizontal
+box4 = box2 <> Rainbox.spacer Rainbow.cyan 3
 
 renderBox4 :: IO ()
-renderBox4 = mapM_ putChunk . toList . render $ box4
+renderBox4 = mapM_ Rainbow.putChunk . toList . Rainbox.render $ box4
 
-box5 :: Box Horizontal
-box5 = box4 <> spreader center 12
+box5 :: Rainbox.Box Rainbox.Horizontal
+box5 = box4 <> Rainbox.spreader Rainbox.center 12
 
 renderBox5 :: IO ()
-renderBox5 = mapM_ putChunk . toList . render $ box5
+renderBox5 = mapM_ Rainbow.putChunk . toList . Rainbox.render $ box5
 
 -- Sample code for 'tableByRows'
 --
@@ -443,42 +444,44 @@ data Station = Station
   , underground :: Bool
   }
 
-nameCell :: Radiant -> Text -> Cell
-nameCell bk nm
-  = Cell (Seq.singleton . Seq.singleton $ (chunk nm & back bk))
-         top left bk
+nameCell :: Rainbow.Radiant -> Text -> Rainbox.Cell
+nameCell bk nm = Rainbox.Cell cks Rainbox.top Rainbox.left bk
+  where
+    cks = Seq.singleton . Seq.singleton $ (Rainbow.chunk nm & Rainbow.back bk)
 
-linesCell :: Radiant -> [Line] -> Cell
-linesCell bk lns = Cell (Seq.fromList . fmap (lineRow bk) $ lns)
-                        top right bk
+linesCell :: Rainbow.Radiant -> [Line] -> Rainbox.Cell
+linesCell bk lns = Rainbox.Cell cks Rainbox.top Rainbox.right bk
+  where
+    cks = Seq.fromList . fmap (lineRow bk) $ lns
 
-lineRow :: Radiant -> Line -> Seq (Chunk Text)
+lineRow :: Rainbow.Radiant -> Line -> Seq (Rainbow.Chunk Text)
 lineRow bk li = Seq.singleton ck
   where
-    ck = chunk (X.pack . show $ li) & fore clr & back bk
+    ck = Rainbow.chunk (X.pack . show $ li) & Rainbow.fore clr & Rainbow.back bk
     clr = case li of
-      Red -> red
-      Blue -> blue
-      Orange -> yellow <> color256 220
-      Green -> green
-      Yellow -> yellow
-      Silver -> white <> grey
+      Red -> Rainbow.red
+      Blue -> Rainbow.blue
+      Orange -> Rainbow.yellow <> Rainbow.color256 220
+      Green -> Rainbow.green
+      Yellow -> Rainbow.yellow
+      Silver -> Rainbow.white <> Rainbow.grey
 
 
-addressCell :: Radiant -> [Text] -> Cell
-addressCell bk lns = Cell (Seq.fromList . fmap addrRow $ lns) top center bk
+addressCell :: Rainbow.Radiant -> [Text] -> Rainbox.Cell
+addressCell bk lns = Rainbox.Cell cks Rainbox.top Rainbox.center bk
   where
-    addrRow txt = Seq.singleton $ chunk txt & back bk
+    cks = Seq.fromList . fmap addrRow $ lns
+    addrRow txt = Seq.singleton $ Rainbow.chunk txt & Rainbow.back bk
 
-undergroundCell :: Radiant -> Bool -> Cell
+undergroundCell :: Rainbow.Radiant -> Bool -> Rainbox.Cell
 undergroundCell bk bl
-  = Cell (Seq.singleton . Seq.singleton $ ck) top left bk
+  = Rainbox.Cell (Seq.singleton . Seq.singleton $ ck) Rainbox.top Rainbox.left bk
   where
-    ck = (chunk $ if bl then "Yes" else "No") & back bk
+    ck = (Rainbow.chunk $ if bl then "Yes" else "No") & Rainbow.back bk
 
 -- | Converts a 'Station' to a list of 'Cell'.
 
-stationCells :: Radiant -> Station -> [Cell]
+stationCells :: Rainbow.Radiant -> Station -> [Rainbox.Cell]
 stationCells b st =
   [ nameCell b . name $ st
   , linesCell b . metroLines $ st
@@ -486,21 +489,22 @@ stationCells b st =
   , undergroundCell b . underground $ st
   ]
 
-stationTable :: Box Vertical
+stationTable :: Rainbox.Box Rainbox.Vertical
 stationTable
-  = tableByRows
+  = Rainbox.tableByRows
   . Seq.fromList
   . zipWith stationRow (cycle [coloredBack, mempty])
   $ stations
   where
-    coloredBack = mempty <> color256 195
+    coloredBack = mempty <> Rainbow.color256 195
     stationRow bk
-      = intersperse (separator bk 1)
+      = Rainbox.intersperse (Rainbox.separator bk 1)
       . Seq.fromList
       . stationCells bk
 
 renderStationTable :: IO ()
-renderStationTable = mapM_ putChunk . toList . render $ stationTable
+renderStationTable
+  = mapM_ Rainbow.putChunk . toList . Rainbox.render $ stationTable
 
 stations :: [Station]
 stations =
