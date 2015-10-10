@@ -328,6 +328,7 @@ module Rainbox.Tutorial where
 
 import Control.Lens ((&))
 import Data.Foldable (toList)
+import Data.List (intersperse)
 import Data.Monoid ((<>))
 import Data.Sequence (Seq)
 import qualified Data.Sequence as Seq
@@ -445,12 +446,12 @@ data Station = Station
   }
 
 nameCell :: Rainbow.Radiant -> Text -> Rainbox.Cell
-nameCell bk nm = Rainbox.Cell cks Rainbox.top Rainbox.left bk
+nameCell bk nm = Rainbox.Cell cks Rainbox.top Rainbox.center bk
   where
     cks = Seq.singleton . Seq.singleton $ (Rainbow.chunk nm & Rainbow.back bk)
 
 linesCell :: Rainbow.Radiant -> [Line] -> Rainbox.Cell
-linesCell bk lns = Rainbox.Cell cks Rainbox.top Rainbox.right bk
+linesCell bk lns = Rainbox.Cell cks Rainbox.top Rainbox.center bk
   where
     cks = Seq.fromList . fmap (lineRow bk) $ lns
 
@@ -479,33 +480,6 @@ undergroundCell bk bl
   where
     ck = (Rainbow.chunk $ if bl then "Yes" else "No") & Rainbow.back bk
 
--- | Converts a 'Station' to a list of 'Cell'.
-
-stationCells :: Rainbow.Radiant -> Station -> [Rainbox.Cell]
-stationCells b st =
-  [ nameCell b . name $ st
-  , linesCell b . metroLines $ st
-  , addressCell b . address $ st
-  , undergroundCell b . underground $ st
-  ]
-
-stationTable :: Rainbox.Box Rainbox.Vertical
-stationTable
-  = Rainbox.tableByRows
-  . Seq.fromList
-  . zipWith stationRow (cycle [coloredBack, mempty])
-  $ stations
-  where
-    coloredBack = mempty <> Rainbow.color256 195
-    stationRow bk
-      = Rainbox.intersperse (Rainbox.separator bk 1)
-      . Seq.fromList
-      . stationCells bk
-
-renderStationTable :: IO ()
-renderStationTable
-  = mapM_ Rainbow.putChunk . toList . Rainbox.render $ stationTable
-
 stations :: [Station]
 stations =
   [ Station "Metro Center" [Red, Orange, Silver, Blue]
@@ -523,3 +497,74 @@ stations =
   , Station "Prince George's Plaza" [Green, Yellow]
             ["3575 East-West Hwy", "Hyattsville, MD 20782"] True
   ]
+
+coloredBack :: Rainbow.Radiant
+coloredBack = Rainbow.color256 195
+
+-- | Converts a 'Station' to a list of 'Cell'.
+
+stationRow :: Rainbow.Radiant -> Station -> [Rainbox.Cell]
+stationRow bk st =
+  [ nameCell bk . name $ st
+  , linesCell bk . metroLines $ st
+  , addressCell bk . address $ st
+  , undergroundCell bk . underground $ st
+  ]
+
+-- Building a table of stations on a row-by-row basis.
+
+allStationRows :: [[Rainbox.Cell]]
+allStationRows
+  = zipWith stationRowWithSpacers (cycle [coloredBack, mempty]) stations
+  where
+    stationRowWithSpacers bk
+      = intersperse (Rainbox.separator bk 1)
+      . stationRow bk
+
+verticalStationTable :: Rainbox.Box Rainbox.Vertical
+verticalStationTable
+  = Rainbox.tableByRows
+  . Seq.fromList
+  . fmap Seq.fromList
+  $ allStationRows
+
+renderVerticalStationTable :: IO ()
+renderVerticalStationTable
+  = mapM_ Rainbow.putChunk . toList . Rainbox.render $ verticalStationTable
+
+-- Building a table of stations on a column-by-column basis.
+
+stationColumn :: Station -> [Rainbox.Cell]
+stationColumn st =
+  [ nameCell coloredBack . name $ st
+  , linesCell bland . metroLines $ st
+  , addressCell coloredBack . address $ st
+  , undergroundCell bland . underground $ st
+  ]
+  where
+    bland = mempty
+
+allStationColumns :: [[Rainbox.Cell]]
+allStationColumns
+  = intersperse spacerColumn
+  . map stationColumn
+  $ stations
+  where
+   spacerColumn = take 4 (cycle backgrounds)
+    where
+      backgrounds =
+        [ Rainbox.separator coloredBack 1
+        , Rainbox.separator mempty 1
+        ]
+
+horizontalStationTable :: Rainbox.Box Rainbox.Horizontal
+horizontalStationTable
+  = Rainbox.tableByColumns
+  . Seq.fromList
+  . fmap Seq.fromList
+  $ allStationColumns
+
+
+renderHorizontalStationTable :: IO ()
+renderHorizontalStationTable
+  = mapM_ Rainbow.putChunk . toList . Rainbox.render $ horizontalStationTable

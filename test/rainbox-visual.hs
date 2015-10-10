@@ -21,4 +21,5 @@ main = do
   printBox "box3" renderBox3
   printBox "box4" renderBox4
   printBox "box5" renderBox5
-  printBox "stationTable" renderStationTable
+  printBox "verticalStationTable" renderVerticalStationTable
+  printBox "horizontalStationTable" renderHorizontalStationTable
