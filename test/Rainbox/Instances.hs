@@ -35,9 +35,6 @@ instance Arbitrary Core where
 instance Arbitrary Rod where
   arbitrary = fmap Rod arbitrary
 
-instance Arbitrary a => Arbitrary (Seq a) where
-  arbitrary = fmap Seq.fromList arbitrary
-
 newtype NonEmptySeq a = NonEmptySeq { getNonEmptySeq :: Seq a }
   deriving Show
 

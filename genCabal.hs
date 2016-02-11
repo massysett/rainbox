@@ -1,3 +1,6 @@
+#!/usr/bin/env stack
+-- stack --resolver lts-5.2 --install-ghc runghc --package cartel
+
 -- Generates a Cabal file using the Cartel package.
 --
 -- Written for Cartel version 0.14.2.0
@@ -6,7 +9,7 @@ import Cartel
 
 -- Package version
 pkgVersion :: [Word]
-pkgVersion = [0,18,0,4]
+pkgVersion = [0,18,0,6]
 
 -- Dependencies
 
@@ -35,7 +38,7 @@ tasty_quickcheck :: Package
 tasty_quickcheck = package "tasty-quickcheck" (gtEq [0,8,1])
 
 quickcheck :: Package
-quickcheck = package "QuickCheck" (gtEq [2,7])
+quickcheck = package "QuickCheck" (gtEq [2,8,2])
 
 properties :: Properties
 properties = blank
@@ -45,7 +48,7 @@ properties = blank
   , buildType = Just simple
   , license = Just bsd3
   , licenseFile = "LICENSE"
-  , copyright = "Copyright 2014-2015 Omari Norman"
+  , copyright = "Copyright 2014-2016 Omari Norman"
   , author = "Omari Norman"
   , maintainer = "omari@smileystation.com"
   , stability = "Experimental"
