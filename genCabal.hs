@@ -25,8 +25,8 @@ containers = package "containers" (gtEq [0,5,5])
 rainbow :: Package
 rainbow = package "rainbow" (gtEq [0,26])
 
-lens :: Package
-lens = package "lens" (gtEq [4,9])
+lensSimple :: Package
+lensSimple = package "lens-simple" (gtEq [0,1,0,8])
 
 text :: Package
 text = package "text" (gtEq [0,11,3,1])
@@ -81,7 +81,7 @@ libPackages =
   , bytestring
   , containers
   , text
-  , lens
+  , lensSimple
   ]
 
 libDeps :: HasBuildInfo a => a
