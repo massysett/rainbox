@@ -326,14 +326,14 @@ Rainbox does not work on infinite inputs.
 -}
 module Rainbox.Tutorial where
 
-import Control.Lens ((&))
-import Data.Foldable (toList)
-import Data.List (intersperse)
-import Data.Monoid ((<>))
-import Data.Sequence (Seq)
+import           Data.Foldable (toList)
+import           Data.List     (intersperse)
+import           Data.Monoid   ((<>))
+import           Data.Sequence (Seq)
 import qualified Data.Sequence as Seq
-import Data.Text (Text)
-import qualified Data.Text as X
+import           Data.Text     (Text)
+import qualified Data.Text     as X
+import           Lens.Simple   ((&))
 import qualified Rainbow
 import qualified Rainbox
 
