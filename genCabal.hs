@@ -9,7 +9,7 @@ import Cartel
 
 -- Package version
 pkgVersion :: [Word]
-pkgVersion = [0,18,0,6]
+pkgVersion = [0,18,0,8]
 
 -- Dependencies
 
@@ -25,6 +25,9 @@ containers = package "containers" (gtEq [0,5,5])
 rainbow :: Package
 rainbow = package "rainbow" (gtEq [0,26])
 
+microlensTh :: Package
+microlensTh = package "microlens-th" (gtEq [0,3,0,2])
+
 lens :: Package
 lens = package "lens" (gtEq [4,9])
 
@@ -37,6 +40,10 @@ tasty = package "tasty" (gtEq [0,10,1])
 tasty_quickcheck :: Package
 tasty_quickcheck = package "tasty-quickcheck" (gtEq [0,8,1])
 
+-- This needs to be QuickCheck 2.8.2, not QuickCheck 2.8.1, because
+-- 2.8.2 introduced an Arbitrary instance for Seq.
+-- This means that you cannot use Stackage LTS 5 series to build
+-- rainbox, because they have QuickCheck 2.8.1.
 quickcheck :: Package
 quickcheck = package "QuickCheck" (gtEq [2,8,2])
 
@@ -81,7 +88,7 @@ libPackages =
   , bytestring
   , containers
   , text
-  , lens
+  , microlensTh
   ]
 
 libDeps :: HasBuildInfo a => a

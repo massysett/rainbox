@@ -11,16 +11,18 @@
 -- if their inputs don't respect particular invariants.
 module Rainbox.Core where
 
-import           Control.Lens ( (|>) , (&) , makeLenses , (<|))
 import           Control.Monad (join)
 import qualified Data.Foldable as F
+import           Data.Function ((&))
 import qualified Data.Map as M
 import           Data.Monoid ((<>))
-import           Data.Sequence (Seq, ViewL (EmptyL, (:<)), viewl)
+import           Data.Sequence (Seq, ViewL (EmptyL, (:<)), viewl,
+                  (|>), (<|))
 import qualified Data.Sequence as Seq
 import           Data.Text (Text)
 import qualified Data.Text as X
 import qualified Data.Traversable as T
+import           Lens.Micro.TH (makeLenses)
 import           Rainbow ( Chunk , Radiant , chunk , back)
 import           Rainbow.Types (Chunk (_yarn))
 

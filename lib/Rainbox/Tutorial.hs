@@ -326,8 +326,8 @@ Rainbox does not work on infinite inputs.
 -}
 module Rainbox.Tutorial where
 
-import Control.Lens ((&))
 import Data.Foldable (toList)
+import Data.Function ((&))
 import Data.List (intersperse)
 import Data.Monoid ((<>))
 import Data.Sequence (Seq)
