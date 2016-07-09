@@ -9,7 +9,7 @@ import Cartel
 
 -- Package version
 pkgVersion :: [Word]
-pkgVersion = [0,18,0,8]
+pkgVersion = [0,18,0,10]
 
 -- Dependencies
 
@@ -25,8 +25,8 @@ containers = package "containers" (gtEq [0,5,5])
 rainbow :: Package
 rainbow = package "rainbow" (gtEq [0,26])
 
-microlensTh :: Package
-microlensTh = package "microlens-th" (gtEq [0,3,0,2])
+lensSimple :: Package
+lensSimple = package "lens-simple" (gtEq [0,1,0])
 
 lens :: Package
 lens = package "lens" (gtEq [4,9])
@@ -88,7 +88,7 @@ libPackages =
   , bytestring
   , containers
   , text
-  , microlensTh
+  , lensSimple
   ]
 
 libDeps :: HasBuildInfo a => a

@@ -5,6 +5,8 @@
 {-# LANGUAGE DeriveFoldable #-}
 {-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE TemplateHaskell #-}
+-- lens-simple makeLenses will not make type signatures
+{-# OPTIONS_GHC -fno-warn-missing-signatures #-}
 {-# OPTIONS_HADDOCK not-home #-}
 -- | Contains the innards of 'Rainbox'.  You shouldn't need anything
 -- in here.  Some functions here are partial or have undefined results
@@ -22,7 +24,7 @@ import qualified Data.Sequence as Seq
 import           Data.Text (Text)
 import qualified Data.Text as X
 import qualified Data.Traversable as T
-import           Lens.Micro.TH (makeLenses)
+import           Lens.Simple (makeLenses)
 import           Rainbow ( Chunk , Radiant , chunk , back)
 import           Rainbow.Types (Chunk (_yarn))
 
