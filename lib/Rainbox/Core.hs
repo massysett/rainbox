@@ -25,6 +25,7 @@ import           Data.Text (Text)
 import qualified Data.Text as X
 import qualified Data.Traversable as T
 import           Lens.Simple (makeLenses)
+import           Control.Applicative ((<**>))
 import           Rainbow ( Chunk , Radiant , chunk , back)
 import           Rainbow.Types (Chunk (_yarn))
 
@@ -712,9 +713,4 @@ mconcatSeq = F.foldl' (<>) mempty
 intersperse :: a -> Seq a -> Seq a
 intersperse new sq = case viewl sq of
   EmptyL -> Seq.empty
-  x :< xs -> x <| go xs
-    where
-      go sqnce = case viewl sqnce of
-        EmptyL -> Seq.empty
-        a :< as -> new <| a <| go as
-
+  p :< ps -> p <| (ps <**> (const new <| Seq.singleton id))
