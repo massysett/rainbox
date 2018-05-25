@@ -4,7 +4,7 @@
 name: rainbox
 synopsis: Two-dimensional box pretty printing, with colors
 description: Please see README.md
-version: 0.18.0.12
+version: 0.20.0.0
 license: BSD3
 license-file: LICENSE
 copyright: Copyright 2014-2018 Omari Norman
@@ -14,12 +14,16 @@ stability: Experimental
 homepage: https://www.github.com/massysett/rainbox
 bug-reports: https://www.github.com/massysett/rainbox/issues
 category: System
-extra-source-files: README.md
+extra-source-files:
+  - README.md
+  - package.yaml
+  - stack.yaml
+  - changelog
 verbatim:
   x-curation: uncurated
 
 dependencies:
-  - base >= 4.8 && < 5
+  - base >= 4.11 && < 5
   - text
   - bytestring
   - containers

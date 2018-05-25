@@ -35,16 +35,18 @@ import           Rainbow.Types (Chunk (_yarn))
 data Alignment a = Center | NonCenter a
   deriving (Eq, Ord, Show, Functor, F.Foldable, T.Traversable)
 
+instance Semigroup (Alignment a) where
+  x <> y = case x of
+    Center -> y
+    NonCenter a -> case y of
+      Center -> NonCenter a
+      NonCenter b -> NonCenter b
+
 -- | 'mempty' is 'center'.  'mappend' takes the rightmost non-'center'
 -- value.
 
 instance Monoid (Alignment a) where
   mempty = Center
-  mappend x y = case x of
-    Center -> y
-    NonCenter a -> case y of
-      Center -> NonCenter a
-      NonCenter b -> NonCenter b
 
 -- # Horizontal and vertical
 
@@ -342,9 +344,11 @@ verticalMerge sqnce = case viewl sqnce of
 newtype Box a = Box (Seq (Payload a))
   deriving (Eq, Ord, Show)
 
+instance Semigroup (Box a) where
+  (Box x) <> (Box y) = Box (x <> y)
+
 instance Monoid (Box a) where
   mempty = Box Seq.empty
-  mappend (Box x) (Box y) = Box (x <> y)
 
 -- # Orientation
 
@@ -519,14 +523,8 @@ data Cell = Cell
 
 makeLenses ''Cell
 
--- | 'mappend' combines two 'Cell' horizontally so they are
--- side-by-side, left-to-right.  The '_horizontal', '_vertical', and
--- '_background' fields are combined using their respective 'Monoid'
--- instances.  'mempty' uses the respective 'mempty' value for each
--- field.
-instance Monoid Cell where
-  mempty = Cell mempty mempty mempty mempty
-  mappend (Cell rx hx vx bx) (Cell ry hy vy by)
+instance Semigroup Cell where
+  (Cell rx hx vx bx) <> (Cell ry hy vy by)
     = Cell (zipSeqs rx ry) (hx <> hy) (vx <> vy) (bx <> by)
     where
       zipSeqs x y = Seq.zipWith (<>) x' y'
@@ -535,6 +533,15 @@ instance Monoid Cell where
             (max 0 (Seq.length y - Seq.length x)) Seq.empty
           y' = y <> Seq.replicate
             (max 0 (Seq.length x - Seq.length y)) Seq.empty
+
+
+-- | 'mappend' combines two 'Cell' horizontally so they are
+-- side-by-side, left-to-right.  The '_horizontal', '_vertical', and
+-- '_background' fields are combined using their respective 'Monoid'
+-- instances.  'mempty' uses the respective 'mempty' value for each
+-- field.
+instance Monoid Cell where
+  mempty = Cell mempty mempty mempty mempty
 
 -- | Creates a blank 'Cell' with the given background color and width;
 -- useful for adding separators between columns.
