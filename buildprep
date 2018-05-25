@@ -1,7 +1,0 @@
-#!/bin/sh
-
-# Move the main stack.yaml; otherwise stack will
-# get confused
-mv stack.yaml stack-old.yaml
-./genCabal.hs > rainbox.cabal
-mv stack-old.yaml stack.yaml
