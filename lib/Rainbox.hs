@@ -40,18 +40,32 @@ module Rainbox
   -- * Rendering
   , render
 
+  -- TODO add separator functions
+
   -- * Tables
+  --
+  -- | Types and functions to build a simple spreadsheet-like grid.
+  -- You create a nested 'Seq' of 'Cell', and then use 'tableByRows'
+  -- or 'tableByColumns' to create a 'Box', which you can then
+  -- render using "Rainbow" functions.  Each column is as wide as
+  -- necessary to accomodate the widest cell in the column, but no
+  -- wider, which means the columns will tend to meld together.  To
+  -- add separators you'll have to add separator cells in yourself.
+
+  -- ** Cell type
   , Cell(..)
+  , separator
+
+  -- ** van Laarhoven lenses
   , rows
   , horizontal
   , vertical
   , background
+
+  -- ** Table builders
   , tableByRows
   , tableByColumns
-  , separator
 
-  -- * Utilities
-  , intersperse
   ) where
 
 import Rainbox.Core

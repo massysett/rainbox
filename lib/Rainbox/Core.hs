@@ -18,13 +18,12 @@ import qualified Data.Foldable as F
 import           Data.Function ((&))
 import qualified Data.Map as M
 import           Data.Monoid ((<>))
-import           Data.Sequence (Seq, ViewL (EmptyL, (:<)), viewl,
-                  (|>), (<|))
+import           Data.Sequence (Seq, ViewL (EmptyL, (:<)), viewl, (|>))
 import qualified Data.Sequence as Seq
 import           Data.Text (Text)
 import qualified Data.Text as X
 import qualified Data.Traversable as T
-import           Lens.Simple (makeLenses)
+import           Lens.Simple (Lens', lens)
 import           Rainbow ( Chunk , Radiant , chunk , back)
 import           Rainbow.Types (Chunk (_yarn))
 
@@ -521,7 +520,17 @@ data Cell = Cell
   -- uniform table.
   } deriving (Eq, Ord, Show)
 
-makeLenses ''Cell
+rows :: Lens' Cell (Seq (Seq (Chunk Text)))
+rows = lens _rows (\cel fld -> cel { _rows = fld })
+
+horizontal :: Lens' Cell (Alignment Horizontal)
+horizontal = lens _horizontal (\cel fld -> cel { _horizontal = fld })
+
+vertical :: Lens' Cell (Alignment Vertical)
+vertical = lens _vertical (\cel fld -> cel { _vertical = fld })
+
+background :: Lens' Cell Radiant
+background = lens _background (\cel fld -> cel { _background = fld })
 
 instance Semigroup Cell where
   (Cell rx hx vx bx) <> (Cell ry hy vy by)
@@ -711,17 +720,4 @@ equalize emp sqnce = fmap adder sqnce
 
 mconcatSeq :: Monoid a => Seq a -> a
 mconcatSeq = F.foldl' (<>) mempty
-
-
--- # Utilities
-
--- | Like 'Data.List.intersperse' in "Data.List", but works on 'Seq'.
-intersperse :: a -> Seq a -> Seq a
-intersperse new sq = case viewl sq of
-  EmptyL -> Seq.empty
-  x :< xs -> x <| go xs
-    where
-      go sqnce = case viewl sqnce of
-        EmptyL -> Seq.empty
-        a :< as -> new <| a <| go as
 
