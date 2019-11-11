@@ -19,19 +19,6 @@ main = defaultMain . testGroup "Rainbox tests" $
       in x + y == a
     ]
 
-  , testGroup "intersperse" $
-    [ testProperty "makes no change to empty Seq" $
-      intersperse undefined Seq.empty == (Seq.empty :: Seq ())
-
-    , testProperty "makes no change to singleton Seq" $
-      intersperse undefined (Seq.singleton ()) == Seq.singleton ()
-
-    , testProperty "lengthens other Seq by length - 1" $ \i ->
-      i > 1 ==>
-      Seq.length (intersperse undefined (Seq.replicate i ())) ==
-      i + (i - 1)
-    ]
-
   , testGroup "HasHeight" $
     [ testGroup "never returns less than zero" $
       let go a = let h = height a in classify (h > 2) "h > 2" (h >= 0) in
