@@ -22,7 +22,7 @@ import           Data.Sequence (Seq, ViewL (EmptyL, (:<)), viewl, (|>))
 import qualified Data.Sequence as Seq
 import qualified Data.Text as X
 import qualified Data.Traversable as T
-import           Lens.Simple (Lens', lens)
+import           Control.Lens (Lens', lens)
 import           Rainbow ( Chunk , Radiant , chunk , back)
 import           Rainbow.Types (Chunk (_yarn))
 

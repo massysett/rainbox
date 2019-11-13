@@ -5,12 +5,12 @@
 
 packages:
 - completed:
-    hackage: rainbow-0.32.0.0@sha256:decdfc343a4fda4b6da3319cbaa134dddb7ead4b6620e2d76140f86dc50e1450,2981
+    hackage: rainbow-0.34.0.0@sha256:b9ba464898e4a8bbb27870cdf750bca323834684c0a25d58bed00231a08abb3c,2946
     pantry-tree:
       size: 748
-      sha256: 46469ab6e17e7ab5d744de2d9e8dcf9b874b1a9783485efccfd8766799c44054
+      sha256: c84b20d7dba172c454dfc61be7ecc8146f1a624aa1618f7fc94bc170d0e0500a
   original:
-    hackage: rainbow-0.32.0.0
+    hackage: rainbow-0.34.0.0
 snapshots:
 - completed:
     size: 525663
