@@ -78,11 +78,11 @@ instance Arbitrary Scheme where
 instance CoArbitrary Scheme where
   coarbitrary (Scheme a b) = coarbitrary a . coarbitrary b
 
-instance Arbitrary a => Arbitrary (Chunk a) where
+instance Arbitrary Chunk where
   arbitrary = Chunk <$> arbitrary <*> arbitrary
   shrink = genericShrink
 
-instance CoArbitrary a => CoArbitrary (Chunk a) where
+instance CoArbitrary Chunk where
   coarbitrary (Chunk a b)
     = coarbitrary a
     . coarbitrary b

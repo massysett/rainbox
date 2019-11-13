@@ -20,7 +20,6 @@ import qualified Data.Map as M
 import           Data.Monoid ((<>))
 import           Data.Sequence (Seq, ViewL (EmptyL, (:<)), viewl, (|>))
 import qualified Data.Sequence as Seq
-import           Data.Text (Text)
 import qualified Data.Text as X
 import qualified Data.Traversable as T
 import           Lens.Simple (Lens', lens)
@@ -103,7 +102,7 @@ class HasHeight a where
 instance HasHeight Height where
   height (Height a) = max 0 a
 
-instance HasHeight (Chunk a) where
+instance HasHeight Chunk where
   height _ = 1
 
 instance (HasHeight a, HasHeight b) => HasHeight (Either a b) where
@@ -115,7 +114,7 @@ class HasWidth a where
 instance HasWidth Width where
   width (Width a) = max 0 a
 
-instance HasWidth (Chunk Text) where
+instance HasWidth Chunk where
   width ck = X.length . _yarn $ ck
 
 instance (HasWidth a, HasWidth b) => HasWidth (Either a b) where
@@ -125,7 +124,7 @@ instance (HasWidth a, HasWidth b) => HasWidth (Either a b) where
 
 -- | A 'Core' is either a single 'Chunk' or, if the box is blank, is
 -- merely a height and a width.
-newtype Core = Core (Either (Chunk Text) (Height, Width))
+newtype Core = Core (Either Chunk (Height, Width))
   deriving (Eq, Ord, Show)
 
 instance HasWidth Core where
@@ -138,7 +137,7 @@ instance HasHeight Core where
 
 -- | An intermediate type used in rendering; it consists either of
 -- text 'Chunk' or of a number of spaces coupled with a background color.
-newtype Rod = Rod (Either (Int, Radiant) (Chunk Text))
+newtype Rod = Rod (Either (Int, Radiant) Chunk)
   deriving (Eq, Ord, Show)
 
 instance HasWidth Rod where
@@ -190,7 +189,7 @@ rodRowsFromCore bk (Core ei) = case ei of
 -- | Converts a 'RodRows' to a nested 'Seq' of 'Chunk' in
 -- preparation for rendering.  Newlines are added to the end of each
 -- line.
-chunksFromRodRows :: RodRows -> Seq (Seq (Chunk Text))
+chunksFromRodRows :: RodRows -> Seq (Seq Chunk)
 chunksFromRodRows rr = case rr of
   RodRowsWithHeight sq -> fmap (|> chunk "\n") . fmap (fmap chunkFromRod) $ sq
     where
@@ -460,7 +459,7 @@ fromChunk
   -- ^ Background color.  The background color in the 'Chunk' is not
   -- changed; this background is used if the 'Payload' must be padded
   -- later on.
-  -> Chunk Text
+  -> Chunk
   -> Box a
 fromChunk a r = Box . Seq.singleton . Payload a r  . Right . Core . Left
 
@@ -496,7 +495,7 @@ wrap a r = Box . Seq.singleton . Payload a r . Left . rodRows
 -- | Convert a box to a 'Seq' of 'Chunk' in preparation for rendering.
 -- Use 'F.toList' to convert the 'Seq' of 'Chunk' to a list so that
 -- you can print it using the functions in "Rainbow".
-render :: Orientation a => Box a -> Seq (Chunk Text)
+render :: Orientation a => Box a -> Seq Chunk
 render = join . chunksFromRodRows . rodRows
 
 
@@ -504,7 +503,7 @@ render = join . chunksFromRodRows . rodRows
 
 -- | A single cell in a spreadsheet-like grid.
 data Cell = Cell
-  { _rows :: Seq (Seq (Chunk Text))
+  { _rows :: Seq (Seq Chunk)
   -- ^ The cell can have multiple rows of text; there is one 'Seq' for
   -- each row of text.
   , _horizontal :: Alignment Horizontal
@@ -520,7 +519,7 @@ data Cell = Cell
   -- uniform table.
   } deriving (Eq, Ord, Show)
 
-rows :: Lens' Cell (Seq (Seq (Chunk Text)))
+rows :: Lens' Cell (Seq (Seq Chunk))
 rows = lens _rows (\cel fld -> cel { _rows = fld })
 
 horizontal :: Lens' Cell (Alignment Horizontal)

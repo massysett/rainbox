@@ -455,7 +455,7 @@ linesCell bk lns = Rainbox.Cell cks Rainbox.top Rainbox.center bk
   where
     cks = Seq.fromList . fmap (lineRow bk) $ lns
 
-lineRow :: Rainbow.Radiant -> Line -> Seq (Rainbow.Chunk Text)
+lineRow :: Rainbow.Radiant -> Line -> Seq Rainbow.Chunk
 lineRow bk li = Seq.singleton ck
   where
     ck = Rainbow.chunk (X.pack . show $ li) & Rainbow.fore clr & Rainbow.back bk

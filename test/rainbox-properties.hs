@@ -41,7 +41,7 @@ main = defaultMain . testGroup "Rainbox tests" $
     [ testGroup "never returns less than zero" $
       let go a = let w = width a in classify (w > 2) "w > 2" (w >= 0) in
       [ testProperty "Chunk" $
-          \a -> go (a `asTypeOf` (undefined :: Chunk X.Text))
+          \a -> go (a `asTypeOf` (undefined :: Chunk))
       , testProperty "RodRows" $
           \a -> go (a `asTypeOf` (undefined :: RodRows))
       , testProperty "Rod" $
@@ -61,9 +61,9 @@ main = defaultMain . testGroup "Rainbox tests" $
 
   , testGroup "chunk" $
     [ testProperty "height is always 1" $ \c ->
-      let _types = c :: Chunk X.Text in height c == 1
+      let _types = c :: Chunk in height c == 1
     , testProperty "width is sum of number of characters" $ \c@(Chunk _ t) ->
-      let _types = c :: Chunk X.Text in width c == X.length t
+      let _types = c :: Chunk in width c == X.length t
     ]
 
   , testGroup "addVerticalPadding"
