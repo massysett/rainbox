@@ -39,6 +39,8 @@ module Rainbox
 
   -- * Rendering
   , render
+  , putBox
+  , hPutBox
 
   -- TODO add separator functions
 

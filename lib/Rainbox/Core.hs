@@ -23,8 +23,9 @@ import qualified Data.Sequence as Seq
 import qualified Data.Text as X
 import qualified Data.Traversable as T
 import           Control.Lens (Lens', lens)
-import           Rainbow ( Chunk , Radiant , chunk , back)
+import           Rainbow ( Chunk , Radiant , chunk , back, hPutChunks)
 import           Rainbow.Types (Chunk (_yarn))
+import           System.IO
 
 -- # Alignment
 
@@ -497,6 +498,16 @@ wrap a r = Box . Seq.singleton . Payload a r . Left . rodRows
 -- you can print it using the functions in "Rainbow".
 render :: Orientation a => Box a -> Seq Chunk
 render = join . chunksFromRodRows . rodRows
+
+-- | Renders a 'Box' to the given 'Handle'.  This uses 'hPutChunks' so consult
+-- that function for more details on how this works; generally it is going to
+-- use the maximum number of colors possible for your terminal.
+hPutBox :: Orientation a => Handle -> Box a -> IO ()
+hPutBox h b = hPutChunks h (F.toList . render $ b)
+
+-- | Uses 'hPutBox' to render the given 'Box' to standard output.
+putBox :: Orientation a => Box a -> IO ()
+putBox = hPutBox stdout
 
 
 -- # Tables
