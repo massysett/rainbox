@@ -13,7 +13,7 @@ Documentation
 =============
 
 In addition to the Haddock documentation, a tutorial is available in
-[the Rainbox.Tutorial module](lib/Rainbox/Tutorial.lhs).
+[the Rainbox.Tutorial module](lib/Rainbox/Tutorial.hs).
 
 Portability
 ===========
