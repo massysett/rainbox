@@ -26,6 +26,7 @@ import           Control.Lens (Lens', lens)
 import           Rainbow ( Chunk , Radiant , chunk , back, hPutChunks)
 import           Rainbow.Types (Chunk (_yarn))
 import           System.IO
+import Data.List (transpose)
 
 -- # Alignment
 
@@ -630,16 +631,12 @@ padBoxV mp = fmap (Seq.mapWithIndex f)
         padLeft = spreader right lenL
         padRight = spreader left lenR
 
-
 widestCellMap :: Seq (Seq (Box Vertical)) -> M.Map Int (Int, Int)
-widestCellMap = F.foldl' outer M.empty
+widestCellMap x =
+  M.fromList $ zip [0..] (fmap maximum $ transpose $ fff x)
   where
-    outer mpOuter = Seq.foldlWithIndex inner mpOuter
-      where
-        inner mpInner idx bx = case M.lookup idx mpInner of
-          Nothing -> M.insert idx (port bx, starboard bx) mpInner
-          Just (pOld, sOld) -> M.insert idx
-            (max pOld (port bx), max sOld (starboard bx)) mpInner
+    fff :: Seq (Seq (Box Vertical)) -> [[(Int,Int)]]
+    fff xx = F.toList $ fmap F.toList $ (fmap (fmap (\bx -> (port bx, starboard bx)))) xx
 
 -- Table by columns:
 --
