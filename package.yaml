@@ -27,6 +27,7 @@ dependencies:
   - text
   - bytestring
   - containers
+  - mtl
   - rainbow
   - text
   - lens

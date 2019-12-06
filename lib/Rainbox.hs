@@ -42,8 +42,6 @@ module Rainbox
   , putBox
   , hPutBox
 
-  -- TODO add separator functions
-
   -- * Tables
   --
   -- | Types and functions to build a simple spreadsheet-like grid.
