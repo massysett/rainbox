@@ -66,6 +66,23 @@ module Rainbox
   , tableByRows
   , tableByColumns
 
+  -- * Bi-color tables
+  , BicolorTableCellLine
+  , BicolorTableCell
+  , BicolorTableRow
+  , BicolorTable(..)
+  , bicolorTable
+  , hPutBicolorTable
+  , putBicolorTable
+
+  -- ** van Laarhoven lenses
+  , bctEvenBackground
+  , bctOddBackground
+  , bctColumnCount
+  , bctAlignments
+  , bctRows
+
   ) where
 
 import Rainbox.Core
+import Rainbox.BicolorTable

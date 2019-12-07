@@ -1,8 +1,9 @@
 {-# LANGUAGE TemplateHaskell #-}
+-- | Functions and types to build 'BicolorTable's.  Everything you should
+-- typically need is exported from "Rainbox".
 module Rainbox.BicolorTable where
 
 import Control.Lens
-import Control.Monad.Except
 import Data.Sequence (Seq)
 import qualified Data.Sequence as Seq
 import Rainbow
@@ -39,17 +40,22 @@ type BicolorTableRow = Seq BicolorTableCell
 --
 -- Note that a row may contain more than one line of text.
 --
--- Unlike tables built with 'tableByRows' or 'tableByColums', all
--- tables built with 'bicolorTable' will have separator colums one
--- space wide between each column.
+-- Unlike tables built with 'tableByRows' or 'tableByColumns', all
+-- tables built with 'bicolorTable' will have separator colums
+-- between each column.
 data BicolorTable = BicolorTable
   { _bctEvenBackground :: Radiant
-    -- ^ Background color for all even-numbered rows.  Row numbering
-    -- starts with zero.
+  -- ^ Background color for all even-numbered rows.  Row numbering
+  -- starts with zero.  To use the terminal's default background color, use
+  -- 'mempty'.
 
   , _bctOddBackground :: Radiant
-    -- ^ Background color for all odd-colored rows.  Row numbering
-    -- starts with zero.
+  -- ^ Background color for all odd-colored rows.  Row numbering
+  -- starts with zero.  To use the terminal's default background color, use
+  -- 'mempty'.
+
+  , _bctSpacerWidth :: Int
+  -- ^ The width of each column of spacer cells.
 
   , _bctColumnCount :: Int
   -- ^ How many columns are in this table.  Do not include the
@@ -78,18 +84,20 @@ makeLenses ''BicolorTable
 -- this will return 'Left'; otherwise, returns 'Right' with a 'Box'
 -- 'Vertical' that can then be rendered.
 bicolorTable :: BicolorTable -> Either String (Box Vertical)
-bicolorTable = undefined
+bicolorTable = fmap tableByRows . bicolorToPlainTable
 
 -- | Creates a bi-color table and renders it to the given 'Handle'
 -- using 'bicolorTable' and 'hPutBox'.  Any errors from
 -- 'bicolorTable' are repored with 'fail'.
 hPutBicolorTable :: Handle -> BicolorTable -> IO ()
-hPutBicolorTable = undefined
+hPutBicolorTable h tbl = do
+  box <- either fail return . bicolorTable $ tbl
+  hPutBox h box
 
 -- | Creates a bi-color table and renders it to standard output
 -- using 'hPutBicolorTable'.
 putBicolorTable :: BicolorTable -> IO ()
-putBicolorTable = undefined
+putBicolorTable = hPutBicolorTable stdout
 
 -- | Number each row of a 'Seq' with its row number.
 numberSeq :: Seq a -> Seq (Int, a)
@@ -128,3 +136,59 @@ convertBicolorTableCellForRendering
   -> BicolorTableCell
 convertBicolorTableCellForRendering rad
   = fmap (convertBicolorTableCellLineForRendering rad)
+
+
+-- | Convert a BicolorTable cell to a plain Cell.  Does all necessary Chunk
+-- conversions.
+bicolorToPlainCell
+  :: Radiant
+  -- ^ Appropriate background color
+  -> Alignment Vertical
+  -- ^ Column alignment
+  -> BicolorTableCell
+  -> Cell
+bicolorToPlainCell rad align bic = Cell rws top align rad
+  where
+    rws = convertBicolorTableCellForRendering rad bic
+
+-- | Convert a BicolorTable row to a plain Row.  Does all necessary Chunk conversions.
+-- Includes spacer cells.
+bicolorToPlainRow
+  :: Radiant
+  -- ^ Background color for even rows
+  -> Radiant
+  -- ^ Background color for odd rows
+  -> Int
+  -- ^ Column count, total
+  -> Int
+  -- ^ Width of spacer cells
+  -> Int
+  -- ^ Number for this row
+  -> Seq (Alignment Vertical)
+  -- ^ Column alignments
+  -> BicolorTableRow
+  -> Either String (Seq Cell)
+bicolorToPlainRow bkgdEven bkgdOdd colsTot sepWidth colNum aligns columns
+  | Seq.length columns /= colsTot = Left $ "length of row number " ++ show colNum
+      ++ ": " ++ show (Seq.length columns) ++ " (should be: " ++ show colsTot ++ ")"
+  | otherwise = Right row'
+  where
+    row' = Seq.intersperse spcr
+      $ Seq.zipWith (bicolorToPlainCell bkgd) aligns columns
+      where
+        bkgd | even colNum = bkgdEven
+             | otherwise = bkgdOdd
+        spcr = separator bkgd sepWidth
+
+-- | Converts a BicolorTable table to a plain table with 'Cell'.  Does all
+-- necessary Chunk conversions, and includes spacer cells.
+bicolorToPlainTable
+  :: BicolorTable
+  -> Either String (Seq (Seq Cell))
+bicolorToPlainTable (BicolorTable bkgdEven bkgdOdd sepWidth colsTot aligns rws)
+  | lenAligns /= colsTot = Left $ "length of alignments Seq: " ++ show lenAligns
+      ++ " (should be: " ++ show colsTot ++ ")"
+  | otherwise = Seq.traverseWithIndex f rws
+  where
+    lenAligns = Seq.length aligns
+    f rowIdx = bicolorToPlainRow bkgdEven bkgdOdd colsTot sepWidth rowIdx aligns
