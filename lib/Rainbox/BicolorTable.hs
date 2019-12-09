@@ -22,8 +22,9 @@ type BicolorTableCellLine = Seq Chunk
 type BicolorTableCell = Seq BicolorTableCellLine
 
 -- | The set of all columns in a single row.  The length of each
--- 'BicolorTableRow' must be equal to '_bctColumnCount'; otherwise,
--- 'bicolorTable' will fail with an error message.
+-- 'BicolorTableRow' must be equal to the length of
+-- '_bctAlignments'; otherwise, 'bicolorTable' will fail with an
+-- error message.
 type BicolorTableRow = Seq BicolorTableCell
 
 -- | Description for a table with rows of alternating background colors.  For
@@ -57,11 +58,6 @@ data BicolorTable = BicolorTable
   , _bctSpacerWidth :: Int
   -- ^ The width of each column of spacer cells.
 
-  , _bctColumnCount :: Int
-  -- ^ How many columns are in this table.  Do not include the
-  -- one-space-wide separator columns, which will be added
-  -- automatically.
-
   , _bctAlignments :: Seq (Alignment Vertical)
   -- ^ Specifies the alignment for each column in the table.  The
   -- length of this 'Seq' must be equal to '_bctColumnCount';
@@ -79,8 +75,7 @@ data BicolorTable = BicolorTable
 makeLenses ''BicolorTable
 
 -- | Creates a bi-color table.  If the number of columns in each
--- 'BicolorTableRow' is not equal to '_bctColumnCount' or if the
--- length of '_bctAlignments' is not equal to '_bctColumnCount',
+-- 'BicolorTableRow' is not equal to the length of '_bctAlignments',
 -- this will return 'Left'; otherwise, returns 'Right' with a 'Box'
 -- 'Vertical' that can then be rendered.
 bicolorTable :: BicolorTable -> Either String (Box Vertical)
@@ -159,8 +154,6 @@ bicolorToPlainRow
   -> Radiant
   -- ^ Background color for odd rows
   -> Int
-  -- ^ Column count, total
-  -> Int
   -- ^ Width of spacer cells
   -> Int
   -- ^ Number for this row
@@ -168,9 +161,10 @@ bicolorToPlainRow
   -- ^ Column alignments
   -> BicolorTableRow
   -> Either String (Seq Cell)
-bicolorToPlainRow bkgdEven bkgdOdd colsTot sepWidth colNum aligns columns
-  | Seq.length columns /= colsTot = Left $ "length of row number " ++ show colNum
-      ++ ": " ++ show (Seq.length columns) ++ " (should be: " ++ show colsTot ++ ")"
+bicolorToPlainRow bkgdEven bkgdOdd sepWidth colNum aligns columns
+  | Seq.length columns /= Seq.length aligns = Left $ "length of row number " ++ show colNum
+      ++ ": " ++ show (Seq.length columns)
+      ++ " (should be: " ++ show (Seq.length aligns) ++ ")"
   | otherwise = Right row'
   where
     row' = Seq.intersperse spcr
@@ -185,10 +179,7 @@ bicolorToPlainRow bkgdEven bkgdOdd colsTot sepWidth colNum aligns columns
 bicolorToPlainTable
   :: BicolorTable
   -> Either String (Seq (Seq Cell))
-bicolorToPlainTable (BicolorTable bkgdEven bkgdOdd sepWidth colsTot aligns rws)
-  | lenAligns /= colsTot = Left $ "length of alignments Seq: " ++ show lenAligns
-      ++ " (should be: " ++ show colsTot ++ ")"
-  | otherwise = Seq.traverseWithIndex f rws
+bicolorToPlainTable (BicolorTable bkgdEven bkgdOdd sepWidth aligns rws)
+  = Seq.traverseWithIndex f rws
   where
-    lenAligns = Seq.length aligns
-    f rowIdx = bicolorToPlainRow bkgdEven bkgdOdd colsTot sepWidth rowIdx aligns
+    f rowIdx = bicolorToPlainRow bkgdEven bkgdOdd sepWidth rowIdx aligns

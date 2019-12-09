@@ -4,7 +4,7 @@
 name: rainbox
 synopsis: Two-dimensional box pretty printing, with colors
 description: Please see README.md
-version: 0.24.3.0
+version: 0.24.3.0.1
 license: BSD3
 license-file: LICENSE
 copyright: Copyright 2014-2019 Omari Norman

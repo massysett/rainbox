@@ -78,7 +78,6 @@ module Rainbox
   -- ** van Laarhoven lenses
   , bctEvenBackground
   , bctOddBackground
-  , bctColumnCount
   , bctAlignments
   , bctRows
 

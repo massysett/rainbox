@@ -15,7 +15,6 @@ bicolorStationBox = BicolorTable
   { _bctEvenBackground = cyan <> color256 254
   , _bctOddBackground = mempty
   , _bctSpacerWidth = 2
-  , _bctColumnCount = 3
   , _bctAlignments = [left, center, right]
   , _bctRows =
   [ [ [ [ "Red" & fore red ]
