@@ -1,6 +1,7 @@
 module Main where
 
 import Rainbox.Core
+import Rainbox.BicolorTable
 import Rainbox.Instances ()
 import Rainbow.Types
 import Test.Tasty
@@ -102,6 +103,22 @@ main = defaultMain . testGroup "Rainbox tests" $
           wdth = width mrge
       in counterexample (show (mrge, wdth, lenR)) $ wdth == lenR
     ]
+
+    , testGroup "BicolorTable"
+      [ testGroup "padBicolorTable"
+        [ testProperty "all rows are the same length" $ \bct ->
+          let padded = padBicolorTable bct
+          in case Seq.viewl . _bctRows $ padded of
+              EmptyL -> True
+              a :< as -> all (\sq -> Seq.length sq == Seq.length a) as
+
+        , testProperty "length of _bctAlignment is at least as long as a row" $ \bct ->
+          let padded = padBicolorTable bct
+          in case Seq.viewl . _bctRows $ padded of
+              EmptyL -> True
+              a :< _ -> Seq.length (_bctAlignments padded) >= Seq.length a
+        ]
+      ]
 
 
   ]

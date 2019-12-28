@@ -4,6 +4,7 @@
 module Rainbox.BicolorTable where
 
 import Control.Lens
+import Data.Foldable (foldl')
 import Data.Sequence (Seq)
 import qualified Data.Sequence as Seq
 import Rainbow
@@ -21,10 +22,10 @@ type BicolorTableCellLine = Seq Chunk
 -- | The set of all lines within a cell in a 'BicolorTable'.
 type BicolorTableCell = Seq BicolorTableCellLine
 
--- | The set of all columns in a single row.  The length of each
--- 'BicolorTableRow' must be equal to the length of
--- '_bctAlignments'; otherwise, 'bicolorTable' will fail with an
--- error message.
+-- | The set of all columns in a single row.  If any single row is
+-- narrower than the widest row in the table, it will be padded with
+-- empty cells so that it is the same width as the widest row in the
+-- table.
 type BicolorTableRow = Seq BicolorTableCell
 
 -- | Description for a table with rows of alternating background colors.  For
@@ -59,9 +60,9 @@ data BicolorTable = BicolorTable
   -- ^ The width of each column of spacer cells.
 
   , _bctAlignments :: Seq (Alignment Vertical)
-  -- ^ Specifies the alignment for each column in the table.  The
-  -- length of this 'Seq' must be equal to '_bctColumnCount';
-  -- otherwise 'bicolorTable' will fail with an error message.
+  -- ^ Specifies the alignment for each column in the table.  If any
+  -- row in '_bctRows' is longer than this 'Seq', each extra column
+  -- is assumed to have an alignment 'left'.
 
   , _bctRows :: Seq BicolorTableRow
   -- ^ Specifies all the textual and color data for the
@@ -74,31 +75,19 @@ data BicolorTable = BicolorTable
 
 makeLenses ''BicolorTable
 
--- | Creates a bi-color table.  If the number of columns in each
--- 'BicolorTableRow' is not equal to the length of '_bctAlignments',
--- this will return 'Left'; otherwise, returns 'Right' with a 'Box'
--- 'Vertical' that can then be rendered.
-bicolorTable :: BicolorTable -> Either String (Box Vertical)
-bicolorTable = fmap tableByRows . bicolorToPlainTable
+-- | Creates a bi-color table.
+bicolorTable :: BicolorTable -> Box Vertical
+bicolorTable = tableByRows . bicolorToPlainTable
 
 -- | Creates a bi-color table and renders it to the given 'Handle'
--- using 'bicolorTable' and 'hPutBox'.  Any errors from
--- 'bicolorTable' are repored with 'fail'.
+-- using 'bicolorTable' and 'hPutBox'.
 hPutBicolorTable :: Handle -> BicolorTable -> IO ()
-hPutBicolorTable h tbl = do
-  box <- either fail return . bicolorTable $ tbl
-  hPutBox h box
+hPutBicolorTable h = hPutBox h . bicolorTable
 
 -- | Creates a bi-color table and renders it to standard output
 -- using 'hPutBicolorTable'.
 putBicolorTable :: BicolorTable -> IO ()
 putBicolorTable = hPutBicolorTable stdout
-
--- | Number each row of a 'Seq' with its row number.
-numberSeq :: Seq a -> Seq (Int, a)
-numberSeq ls = Seq.zip nums ls
-  where
-    nums = Seq.iterateN (Seq.length ls) succ 0
 
 -- | Convert a 'Chunk' for rendering by substituting the table's
 -- row background for the chunk's row background if applicable.
@@ -160,26 +149,37 @@ bicolorToPlainRow
   -> Seq (Alignment Vertical)
   -- ^ Column alignments
   -> BicolorTableRow
-  -> Either String (Seq Cell)
-bicolorToPlainRow bkgdEven bkgdOdd sepWidth colNum aligns columns
-  | Seq.length columns /= Seq.length aligns = Left $ "length of row number " ++ show colNum
-      ++ ": " ++ show (Seq.length columns)
-      ++ " (should be: " ++ show (Seq.length aligns) ++ ")"
-  | otherwise = Right row'
+  -> Seq Cell
+bicolorToPlainRow bkgdEven bkgdOdd sepWidth colNum aligns
+  = Seq.intersperse spcr
+  . Seq.zipWith (bicolorToPlainCell bkgd) aligns
   where
-    row' = Seq.intersperse spcr
-      $ Seq.zipWith (bicolorToPlainCell bkgd) aligns columns
-      where
-        bkgd | even colNum = bkgdEven
-             | otherwise = bkgdOdd
-        spcr = separator bkgd sepWidth
+    bkgd | even colNum = bkgdEven
+         | otherwise = bkgdOdd
+    spcr = separator bkgd sepWidth
 
 -- | Converts a BicolorTable table to a plain table with 'Cell'.  Does all
 -- necessary Chunk conversions, and includes spacer cells.
 bicolorToPlainTable
   :: BicolorTable
-  -> Either String (Seq (Seq Cell))
-bicolorToPlainTable (BicolorTable bkgdEven bkgdOdd sepWidth aligns rws)
-  = Seq.traverseWithIndex f rws
+  -> Seq (Seq Cell)
+bicolorToPlainTable bct = Seq.mapWithIndex f rws
   where
+    (BicolorTable bkgdEven bkgdOdd sepWidth aligns rws) = padBicolorTable bct
     f rowIdx = bicolorToPlainRow bkgdEven bkgdOdd sepWidth rowIdx aligns
+
+-- | Pads out '_bctAlignments' so that it is as long as the longest
+-- row in the table, and pads out each row in '_bctRows' so that it
+-- is as long as the longest row in the table.
+padBicolorTable :: BicolorTable -> BicolorTable
+padBicolorTable bct
+  = bct & over bctRows padRows
+        & over bctAlignments padAligns
+  where
+    maxLen = foldl' max 0 . fmap Seq.length . _bctRows $ bct
+    padRows = fmap pad
+      where
+        pad row = row <>
+          Seq.replicate (max 0 (maxLen - Seq.length row)) Seq.empty
+    padAligns aligns = aligns
+      <> Seq.replicate (max 0 (maxLen - Seq.length aligns)) left

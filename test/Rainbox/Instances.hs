@@ -4,6 +4,7 @@ module Rainbox.Instances where
 import Control.Monad
 import Test.QuickCheck
 import Rainbox.Core
+import Rainbox.BicolorTable
 import Rainbow.Instances ()
 import Data.Sequence (Seq)
 import qualified Data.Sequence as Seq
@@ -59,3 +60,6 @@ instance Arbitrary a => Arbitrary (Box a) where
 
 instance Arbitrary Cell where
   arbitrary = liftM4 Cell arbitrary arbitrary arbitrary arbitrary
+
+instance Arbitrary BicolorTable where
+  arbitrary = BicolorTable <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary
