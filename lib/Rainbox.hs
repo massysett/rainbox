@@ -67,6 +67,10 @@ module Rainbox
   , tableByColumns
 
   -- * Bi-color tables
+  --
+  -- | Experimental code that builds tables with rows of alternating
+  -- background colors.  I will document these more fully when the
+  -- API settles and stabilizes.
   , BicolorTableCellLine
   , BicolorTableCell
   , BicolorTableRow
@@ -78,6 +82,7 @@ module Rainbox
   -- ** van Laarhoven lenses
   , bctEvenBackground
   , bctOddBackground
+  , bctSpacerWidth
   , bctAlignments
   , bctRows
 
