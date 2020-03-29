@@ -68,14 +68,12 @@ module Rainbox
 
   -- * Bi-color tables
   --
-  -- | Experimental code that builds tables with rows of alternating
-  -- background colors.  I will document these more fully when the
-  -- API settles and stabilizes.
+  -- | Build tables with rows of alternating background colors.
   , BicolorTableCellLine
   , BicolorTableCell
   , BicolorTableRow
   , BicolorTable(..)
-  , bicolorTable
+  , bicolorTableToBox
   , hPutBicolorTable
   , putBicolorTable
 

@@ -75,14 +75,14 @@ data BicolorTable = BicolorTable
 
 makeLenses ''BicolorTable
 
--- | Creates a bi-color table.
-bicolorTable :: BicolorTable -> Box Vertical
-bicolorTable = tableByRows . bicolorToPlainTable
+-- | Transforms a 'BicolorTable' to a 'Box'.
+bicolorTableToBox :: BicolorTable -> Box Vertical
+bicolorTableToBox = tableByRows . bicolorToPlainTable
 
 -- | Creates a bi-color table and renders it to the given 'Handle'
 -- using 'bicolorTable' and 'hPutBox'.
 hPutBicolorTable :: Handle -> BicolorTable -> IO ()
-hPutBicolorTable h = hPutBox h . bicolorTable
+hPutBicolorTable h = hPutBox h . bicolorTableToBox
 
 -- | Creates a bi-color table and renders it to standard output
 -- using 'hPutBicolorTable'.
