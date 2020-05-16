@@ -730,4 +730,3 @@ equalize emp sqnce = fmap adder sqnce
 
 mconcatSeq :: Monoid a => Seq a -> a
 mconcatSeq = F.foldl' (<>) mempty
-
