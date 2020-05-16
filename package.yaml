@@ -53,4 +53,3 @@ tests:
       - QuickCheck
       - tasty
       - tasty-quickcheck
-

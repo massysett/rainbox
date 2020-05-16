@@ -289,7 +289,7 @@ rows tall.  To do this, 'mappend' a 'spreader' that is 12 rows tall.
 The result upon 'render'ing is:
 
 @
-                        
+
 -- functions: 'box5' 'renderBox5'
 
                         +----+----------+--+

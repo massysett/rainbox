@@ -129,7 +129,7 @@ allRodRowsSameHeight sqnce = case viewl sqnce of
   x :< xs -> F.all (== height x) . fmap height $ xs
 
 allRodRowsSameWidth :: Seq RodRows -> Property
-allRodRowsSameWidth sqnce = 
+allRodRowsSameWidth sqnce =
   case viewl sqnce of
     EmptyL -> property True
     x :< _ -> counterexample (show (sqnce, lengths, height1))
